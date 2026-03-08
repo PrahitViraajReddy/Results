@@ -1,210 +1,126 @@
-import streamlit as st
-import pandas as pd
+#!/usr/bin/env python3
+"""
+Google Sheets Setup Verification Script
+Run this to check if everything is configured correctly
+"""
+
+import sys
 import os
-import plotly.express as px
-from datetime import datetime
 
-# ── Page Config ───────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="Admin Dashboard",
-    page_icon="🛡️",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
+print("=" * 70)
+print("🔧 GOOGLE SHEETS SETUP VERIFICATION")
+print("=" * 70)
 
-# ── Password ──────────────────────────────────────────────────────────────────
-ADMIN_PASSWORD = "admin123"   # 👈 apna password yahan change karo
+# Check 1: Package Installation
+print("\n📦 Step 1: Checking required packages...")
+try:
+    import gspread
+    print("   ✅ gspread installed")
+except ImportError:
+    print("   ❌ gspread NOT installed")
+    print("   💡 Fix: pip install gspread")
+    sys.exit(1)
 
-# ── CSS ───────────────────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+try:
+    from google.oauth2.service_account import Credentials
+    print("   ✅ google-auth installed")
+except ImportError:
+    print("   ❌ google-auth NOT installed")
+    print("   💡 Fix: pip install google-auth")
+    sys.exit(1)
 
-* { box-sizing: border-box; }
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-    background-color: #f5f3ee;
-    color: #1a1a2e;
+# Check 2: Credentials from Environment Variables
+print("\n🔑 Step 2: Checking credentials...")
+
+creds_dict = {
+    "type": "service_account",
+    "project_id": os.environ.get("GOOGLE_PROJECT_ID", ""),
+    "private_key_id": os.environ.get("GOOGLE_PRIVATE_KEY_ID", ""),
+    "private_key": os.environ.get("GOOGLE_PRIVATE_KEY", "").replace("\\n", "\n"),
+    "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL", ""),
+    "client_id": os.environ.get("GOOGLE_CLIENT_ID", ""),
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": os.environ.get("GOOGLE_CLIENT_X509_CERT_URL", "")
 }
-.page-title { font-family: 'DM Serif Display', serif; font-size: 2rem; color: #1a1a2e; margin-bottom: 4px; }
-.page-sub   { color: #9090b0; font-size: 0.9rem; margin-bottom: 28px; }
-.card {
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 24px 28px;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.05);
-    border: 1px solid #e8e4da;
-    margin-bottom: 16px;
-}
-.card-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.5px; color: #9090b0; margin-bottom: 6px; }
-.card-value { font-family: 'DM Serif Display', serif; font-size: 2rem; color: #1a1a2e; }
-.sec-label {
-    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.8px;
-    color: #9090b0; margin: 20px 0 10px;
-}
-.stButton > button {
-    background: linear-gradient(135deg, #1a1a2e, #2a2a50) !important;
-    color: #ffffff !important;
-    border-radius: 10px !important;
-    font-weight: 600 !important;
-    border: none !important;
-}
-.stTextInput > div > div > input {
-    border-radius: 10px !important;
-    border: 1.5px solid #e0dbd0 !important;
-    padding: 12px 16px !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
-if "admin_auth" not in st.session_state:
-    st.session_state.admin_auth = False
+missing = [k for k, v in creds_dict.items() if not v and k not in ["auth_uri", "token_uri", "auth_provider_x509_cert_url"]]
+if missing:
+    print(f"   ❌ Missing environment variables: {missing}")
+    print("   💡 Set these in Render → Environment Variables")
+    sys.exit(1)
 
-if not st.session_state.admin_auth:
-    st.markdown('<div class="page-title">🛡️ Admin Login</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">Enter password to access the dashboard</div>', unsafe_allow_html=True)
+print("   ✅ Credentials loaded from environment variables")
+SERVICE_EMAIL = creds_dict["client_email"]
+print(f"   📧 Service Account: {SERVICE_EMAIL}")
 
-    _, col, _ = st.columns([2, 1, 2])
-    with col:
-        pwd = st.text_input("", placeholder="Password", type="password", label_visibility="collapsed")
-        if st.button("Login", use_container_width=True):
-            if pwd == ADMIN_PASSWORD:
-                st.session_state.admin_auth = True
-                st.rerun()
-            else:
-                st.error("❌ Wrong password")
-    st.stop()
+# Check 3: Sheet ID
+SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1yDTFJ6g0HhC7vA1PT1cfab1VwET467eu0xPW7TGmUQ4")
+print(f"\n📋 Step 3: Checking Sheet ID...")
+print(f"   Sheet ID: {SHEET_ID}")
+print(f"   Sheet URL: https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit")
 
-# ── Load Logs ─────────────────────────────────────────────────────────────────
-LOG_FILE = "logs.csv"
+# Check 4: Connection Test
+print(f"\n🔌 Step 4: Testing connection...")
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
-st.markdown('<div class="page-title">🛡️ Admin Dashboard</div>', unsafe_allow_html=True)
-st.markdown('<div class="page-sub">Real-time user activity monitor</div>', unsafe_allow_html=True)
+try:
+    from datetime import datetime
 
-col_ref, col_logout = st.columns([8, 1])
-with col_ref:
-    if st.button("🔄 Refresh"):
-        st.rerun()
-with col_logout:
-    if st.button("Logout"):
-        st.session_state.admin_auth = False
-        st.rerun()
+    creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+    print("   ✅ Credentials created")
 
-if not os.path.exists(LOG_FILE):
-    st.info("No activity logged yet.")
-    st.stop()
+    client = gspread.authorize(creds)
+    print("   ✅ Client authorized")
 
-logs = pd.read_csv(LOG_FILE)
-logs.columns = ["hall_ticket", "page", "timestamp"]
-logs["timestamp"] = pd.to_datetime(logs["timestamp"])
-logs = logs.sort_values("timestamp", ascending=False).reset_index(drop=True)
+    sheet = client.open_by_key(SHEET_ID)
+    print(f"   ✅ Spreadsheet opened: '{sheet.title}'")
 
-# ── Stats Cards ───────────────────────────────────────────────────────────────
-total      = len(logs)
-unique_ht  = logs["hall_ticket"].nunique()
-today      = logs[logs["timestamp"].dt.date == datetime.now().date()]
-today_count = len(today)
+    worksheet = sheet.sheet1
+    print(f"   ✅ Worksheet accessed: '{worksheet.title}'")
 
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    st.markdown(f"""
-    <div class="card">
-        <div class="card-label">Total Searches</div>
-        <div class="card-value">{total}</div>
-    </div>""", unsafe_allow_html=True)
-with c2:
-    st.markdown(f"""
-    <div class="card">
-        <div class="card-label">Unique Users</div>
-        <div class="card-value">{unique_ht}</div>
-    </div>""", unsafe_allow_html=True)
-with c3:
-    st.markdown(f"""
-    <div class="card">
-        <div class="card-label">Today's Searches</div>
-        <div class="card-value">{today_count}</div>
-    </div>""", unsafe_allow_html=True)
-with c4:
-    most_used_page = logs["page"].value_counts().idxmax()
-    st.markdown(f"""
-    <div class="card">
-        <div class="card-label">Most Used Page</div>
-        <div class="card-value" style="font-size:1.3rem;">{most_used_page}</div>
-    </div>""", unsafe_allow_html=True)
+    all_values = worksheet.get_all_values()
+    print(f"   📊 Current rows: {len(all_values)}")
 
-st.markdown("<br>", unsafe_allow_html=True)
+    if all_values:
+        headers = all_values[0]
+        print(f"   📝 Headers: {headers}")
+        expected_headers = ["hall_ticket", "page", "timestamp"]
+        if headers != expected_headers:
+            print(f"   ⚠️  WARNING: Headers don't match!")
+            print(f"      Expected: {expected_headers}")
+            print(f"      Found: {headers}")
+    else:
+        print("   ⚠️  Sheet is empty! Add headers: hall_ticket | page | timestamp")
 
-# ── Charts ────────────────────────────────────────────────────────────────────
-col_l, col_r = st.columns(2)
+    print("\n✍️  Step 5: Writing test data...")
+    test_row = [
+        f"TEST_{datetime.now().strftime('%H%M%S')}",
+        "TestPage",
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ]
+    worksheet.append_row(test_row)
+    print(f"   ✅ Test data written: {test_row}")
 
-with col_l:
-    st.markdown('<div class="sec-label">📊 Page Usage</div>', unsafe_allow_html=True)
-    page_counts = logs["page"].value_counts().reset_index()
-    page_counts.columns = ["page", "count"]
-    fig1 = px.bar(
-        page_counts, x="page", y="count",
-        color="count",
-        color_continuous_scale=["#f0ece4", "#c8a84b", "#1a1a2e"],
-        labels={"page": "Page", "count": "Searches"},
-        text="count"
-    )
-    fig1.update_traces(textposition="outside")
-    fig1.update_layout(
-        paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
-        font=dict(family="DM Sans", color="#1a1a2e"),
-        coloraxis_showscale=False,
-        margin=dict(l=10, r=10, t=10, b=10),
-        height=300
-    )
-    st.plotly_chart(fig1, use_container_width=True, config={"displayModeBar": False})
+    all_values_after = worksheet.get_all_values()
+    print(f"   ✅ Verified! Rows after write: {len(all_values_after)}")
 
-with col_r:
-    st.markdown('<div class="sec-label">📈 Activity Over Time</div>', unsafe_allow_html=True)
-    logs["date"] = logs["timestamp"].dt.date
-    daily = logs.groupby("date").size().reset_index(name="count")
-    fig2 = px.line(
-        daily, x="date", y="count",
-        markers=True,
-        labels={"date": "Date", "count": "Searches"},
-    )
-    fig2.update_traces(
-        line=dict(color="#c8a84b", width=3),
-        marker=dict(size=8, color="#1a1a2e")
-    )
-    fig2.update_layout(
-        paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
-        font=dict(family="DM Sans", color="#1a1a2e"),
-        margin=dict(l=10, r=10, t=10, b=10),
-        height=300
-    )
-    st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+    print("\n" + "=" * 70)
+    print("🎉 SUCCESS! Everything is working perfectly!")
+    print("=" * 70)
 
-# ── Recent Activity Table ─────────────────────────────────────────────────────
-st.markdown('<div class="sec-label">🕐 Recent Activity</div>', unsafe_allow_html=True)
+except gspread.exceptions.APIError as e:
+    print(f"\n❌ API Error: {e}")
+    print(f"\n💡 Share the sheet with: {SERVICE_EMAIL}")
 
-st.dataframe(
-    logs[["timestamp", "hall_ticket", "page"]].head(50),
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "timestamp": st.column_config.DatetimeColumn("Time", format="DD/MM/YYYY HH:mm:ss"),
-        "hall_ticket": st.column_config.TextColumn("Hall Ticket"),
-        "page": st.column_config.TextColumn("Page"),
-    }
-)
+except gspread.exceptions.SpreadsheetNotFound:
+    print(f"\n❌ Spreadsheet Not Found! Check Sheet ID: {SHEET_ID}")
 
-# ── Most Active Users ─────────────────────────────────────────────────────────
-st.markdown('<div class="sec-label">🏆 Most Active Users</div>', unsafe_allow_html=True)
-top_users = logs["hall_ticket"].value_counts().head(10).reset_index()
-top_users.columns = ["Hall Ticket", "Searches"]
-st.dataframe(top_users, use_container_width=True, hide_index=True)
+except Exception as e:
+    print(f"\n❌ Unexpected Error: {type(e).__name__}: {str(e)}")
 
-# ── Download ──────────────────────────────────────────────────────────────────
-st.markdown("<br>", unsafe_allow_html=True)
-st.download_button(
-    label="⬇️ Download Full Logs",
-    data=logs.to_csv(index=False),
-    file_name="logs.csv",
-    mime="text/csv"
-)
+print("\n" + "=" * 70)
