@@ -13,575 +13,282 @@ st.set_page_config(
 if "page" not in st.session_state: st.session_state.page = "Home"
 
 # ── Load your CSV directly here ──────────────────────────────────────────────
+
 @st.cache_data
 def load_data():
     return pd.read_csv("results.csv")   # 👈 replace with your actual CSV file path
 
 df = load_data()
 
+# ── Activity Logger ───────────────────────────────────────────────────────────
+import os
+from datetime import datetime
+
+def log_activity(hall_ticket, page):
+    try:
+        log_file = "logs.csv"
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new_row = pd.DataFrame([{"hall_ticket": hall_ticket.upper(), "page": page, "timestamp": timestamp}])
+        if os.path.exists(log_file):
+            new_row.to_csv(log_file, mode="a", header=False, index=False)
+        else:
+            new_row.to_csv(log_file, mode="w", header=True, index=False)
+    except PermissionError:
+        pass
+
 # ── Global CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-:root {
-    --bg:        #070b14;
-    --surface:   #0d1526;
-    --surface2:  #111d35;
-    --border:    #1a2d4a;
-    --border2:   #223354;
-    --accent:    #00d4ff;
-    --accent2:   #0099cc;
-    --gold:      #f0b429;
-    --gold2:     #d4960a;
-    --text:      #e8f0fe;
-    --text2:     #7a90b8;
-    --text3:     #4a6080;
-    --success:   #00c896;
-    --danger:    #ff5a6e;
-    --warn:      #ffb347;
-    --radius:    14px;
-    --radius-sm: 9px;
-    --shadow:    0 4px 32px rgba(0,0,0,0.45);
-    --glow:      0 0 24px rgba(0,212,255,0.12);
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
+* { box-sizing: border-box; }
 html, body, [class*="css"] {
-    font-family: 'Outfit', sans-serif !important;
-    background-color: var(--bg) !important;
-    color: var(--text) !important;
+    font-family: 'DM Sans', sans-serif;
+    background-color: #f5f3ee;
+    color: #1a1a2e;
 }
 
-/* ══ Scrollbar ══════════════════════════════════════════════════ */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-
-/* ══ Hide Streamlit chrome ══════════════════════════════════════ */
-#MainMenu, footer, header { visibility: hidden; }
-.block-container { padding-top: 2rem !important; padding-bottom: 3rem !important; }
-
-/* ══ Sidebar ════════════════════════════════════════════════════ */
+/* ── Sidebar ── */
 section[data-testid="stSidebar"] {
-    background: var(--surface) !important;
-    border-right: 1px solid var(--border) !important;
+    background: #1a1a2e !important;
+    border-right: 1px solid #2e2e50;
 }
-section[data-testid="stSidebar"] > div { padding: 0 !important; }
-
-.sidebar-brand {
-    padding: 28px 20px 6px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 20px;
-}
-.sidebar-icon {
-    font-size: 2rem;
-    display: block;
+section[data-testid="stSidebar"] * { color: #c8c8e8 !important; }
+.sidebar-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    color: #e8c97e !important;
+    margin-bottom: 4px;
+    padding: 10px 0 2px 0;
     text-align: center;
-    margin-bottom: 8px;
 }
-.sidebar-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: var(--accent) !important;
+.sidebar-sub {
+    font-size: 0.72rem;
+    color: #505080 !important;
     text-align: center;
-    letter-spacing: 0.5px;
-}
-.sidebar-tagline {
-    font-size: 0.68rem;
-    color: var(--text3) !important;
-    text-align: center;
+    margin-bottom: 26px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-top: 4px;
-    padding-bottom: 4px;
-}
-.sidebar-footer {
-    font-size: 0.68rem;
-    color: var(--text3) !important;
-    text-align: center;
-    padding: 16px;
-    border-top: 1px solid var(--border);
-    margin-top: 20px;
 }
 
-/* ══ Nav Buttons ════════════════════════════════════════════════ */
+/* ── Nav Buttons ── */
 .stButton > button {
-    font-family: 'Outfit', sans-serif !important;
+    font-family: 'DM Sans', sans-serif !important;
     font-weight: 500 !important;
-    font-size: 0.9rem !important;
-    border-radius: var(--radius-sm) !important;
+    border-radius: 10px !important;
     border: 1px solid transparent !important;
-    background: transparent !important;
-    color: var(--text2) !important;
-    transition: all 0.2s ease !important;
+    font-size: 0.93rem !important;
+    cursor: pointer;
+    transition: all 0.18s !important;
     text-align: left !important;
-    padding: 10px 16px !important;
-    width: 100% !important;
+    justify-content: flex-start !important;
+}
+
+/* ── Action buttons specific ── */
+div[data-testid="stHorizontalBlock"] .stButton > button,
+.action-btn .stButton > button {
+    background: linear-gradient(135deg, #1a1a2e, #2a2a50) !important;
+    color: #ffffff !important;
+    padding: 13px 30px !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    border-radius: 12px !important;
+    text-align: center !important;
+    justify-content: center !important;
 }
 .stButton > button:hover {
-    background: var(--surface2) !important;
-    color: var(--accent) !important;
-    border-color: var(--border2) !important;
-    transform: none !important;
-}
-
-/* ══ Action Buttons (cols) ══════════════════════════════════════ */
-div[data-testid="stHorizontalBlock"] .stButton > button {
-    background: linear-gradient(135deg, var(--accent2), var(--accent)) !important;
-    color: #000 !important;
-    font-weight: 700 !important;
-    font-size: 0.95rem !important;
-    border: none !important;
-    padding: 13px 28px !important;
-    border-radius: var(--radius) !important;
-    text-align: center !important;
-    box-shadow: 0 4px 20px rgba(0,212,255,0.25) !important;
-    transition: all 0.2s ease !important;
-}
-div[data-testid="stHorizontalBlock"] .stButton > button:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 8px 32px rgba(0,212,255,0.4) !important;
-    filter: brightness(1.08) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18) !important;
 }
 
-/* ══ Text Input ═════════════════════════════════════════════════ */
-.stTextInput > div > div > input {
-    background: var(--surface2) !important;
-    border: 1.5px solid var(--border2) !important;
-    border-radius: var(--radius-sm) !important;
-    color: var(--text) !important;
-    font-family: 'Outfit', sans-serif !important;
-    font-size: 0.95rem !important;
-    padding: 13px 16px !important;
-    transition: border-color 0.2s, box-shadow 0.2s !important;
+/* ── Cards ── */
+.card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 26px 28px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.05);
+    border: 1px solid #e8e4da;
+    margin-bottom: 16px;
 }
-.stTextInput > div > div > input::placeholder { color: var(--text3) !important; }
+.card-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.5px; color: #9090b0; margin-bottom: 6px; }
+.card-value { font-family: 'DM Serif Display', serif; font-size: 1.5rem; color: #1a1a2e; }
+.card-sub   { font-size: 0.82rem; color: #b0b0cc; margin-top: 4px; }
+
+/* ── Info rows ── */
+.info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 13px 0; border-bottom: 1px solid #f0ece4;
+}
+.info-row:last-child { border-bottom: none; }
+.info-key { color: #7070a0; font-size: 0.87rem; }
+.info-val { color: #1a1a2e; font-weight: 600; font-size: 0.93rem; }
+
+/* ── Semester badges ── */
+.sem-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.sem-badge {
+    background: #f5f3ee; border: 1px solid #e0dbd0;
+    border-radius: 10px; padding: 10px 20px; text-align: center; min-width: 80px;
+}
+.sem-badge .s-label { font-size: 0.7rem; color: #9090b0; text-transform: uppercase; letter-spacing: 1px; }
+.sem-badge .s-val   { font-size: 1.25rem; font-weight: 700; color: #1a1a2e; margin-top: 3px; }
+
+/* ── Page heading ── */
+.page-title { font-family: 'DM Serif Display', serif; font-size: 2rem; color: #1a1a2e; margin-bottom: 4px; }
+.page-sub   { color: #9090b0; font-size: 0.9rem; margin-bottom: 28px; }
+
+/* ── Hero ── */
+.hero-wrap {
+    min-height: 80vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 40px 20px;
+}
+.hero-pill {
+    display: inline-block;
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 3px;
+    color: #c8a84b; background: #e8c97e14;
+    border: 1px solid #e8c97e44; padding: 5px 18px;
+    border-radius: 20px; margin-bottom: 22px;
+}
+.hero-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.6rem, 6vw, 4.2rem);
+    color: #1a1a2e; line-height: 1.12; margin-bottom: 18px;
+}
+.hero-title span { color: #c8a84b; }
+.hero-desc {
+    font-size: 1.05rem; color: #6a6a9a;
+    max-width: 440px; margin: 0 auto 44px; line-height: 1.75;
+}
+
+/* ── VS divider ── */
+.vs-wrap {
+    display: flex; align-items: center; justify-content: center;
+    padding-top: 60px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem; color: #c8a84b;
+}
+
+/* ── Empty state ── */
+.empty-state { text-align: center; padding: 80px 20px; }
+.empty-icon  { font-size: 3.5rem; margin-bottom: 16px; }
+.empty-title { font-family: 'DM Serif Display', serif; font-size: 1.8rem; color: #1a1a2e; margin-bottom: 8px; }
+.empty-desc  { color: #9090b0; font-size: 0.92rem; line-height: 1.7; }
+
+/* ── Inputs ── */
+.stTextInput > div > div > input {
+    border-radius: 10px !important; border: 1.5px solid #e0dbd0 !important;
+    font-family: 'DM Sans', sans-serif !important; font-size: 0.95rem !important;
+    padding: 12px 16px !important; background: #ffffff !important; color: #1a1a2e !important;
+}
 .stTextInput > div > div > input:focus {
-    border-color: var(--accent) !important;
-    box-shadow: 0 0 0 3px rgba(0,212,255,0.12) !important;
+    border-color: #c8a84b !important; box-shadow: 0 0 0 3px rgba(200,168,75,0.15) !important;
     outline: none !important;
 }
 
-/* ══ Cards ══════════════════════════════════════════════════════ */
-.card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px 26px;
-    margin-bottom: 14px;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    position: relative;
-    overflow: hidden;
-}
-.card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-.card:hover { border-color: var(--border2); box-shadow: var(--glow); }
-.card:hover::before { opacity: 1; }
-
-.card-label {
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--text3);
-    margin-bottom: 7px;
-    font-weight: 600;
-}
-.card-value {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.45rem;
-    color: var(--text);
-    font-weight: 700;
-}
-.card-sub { font-size: 0.8rem; color: var(--text3); margin-top: 5px; }
-
-/* ══ Info rows ══════════════════════════════════════════════════ */
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
-}
-.info-row:last-child { border-bottom: none; }
-.info-key { color: var(--text3); font-size: 0.84rem; font-weight: 500; }
-.info-val { color: var(--text); font-weight: 600; font-size: 0.92rem; }
-
-/* ══ Semester badges ════════════════════════════════════════════ */
-.sem-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
-.sem-badge {
-    background: var(--surface2);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-sm);
-    padding: 10px 18px;
-    text-align: center;
-    min-width: 82px;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-.sem-badge:hover {
-    border-color: var(--accent);
-    box-shadow: 0 0 12px rgba(0,212,255,0.15);
-}
-.sem-badge .s-label {
-    font-size: 0.65rem;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
-    font-weight: 600;
-}
-.sem-badge .s-val {
-    font-size: 1.2rem;
-    font-weight: 800;
-    color: var(--text);
-    margin-top: 4px;
-    font-family: 'Outfit', sans-serif;
-}
-
-/* ══ Page headings ══════════════════════════════════════════════ */
-.page-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.1rem;
-    color: var(--text);
-    font-weight: 800;
-    margin-bottom: 4px;
-    line-height: 1.15;
-}
-.page-title span { color: var(--accent); }
-.page-sub {
-    color: var(--text3);
-    font-size: 0.88rem;
-    margin-bottom: 30px;
-    font-weight: 400;
-}
-
-/* ══ Section label ══════════════════════════════════════════════ */
+/* ── Section label ── */
 .sec-label {
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--text3);
-    margin: 24px 0 10px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.sec-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.8px;
+    color: #9090b0; margin: 20px 0 10px;
 }
 
-/* ══ Hero ═══════════════════════════════════════════════════════ */
-.hero-wrap {
-    min-height: 82vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 40px 20px;
-    position: relative;
-}
-.hero-glow {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -60%);
-    width: 600px; height: 400px;
-    background: radial-gradient(ellipse, rgba(0,212,255,0.06) 0%, transparent 70%);
-    pointer-events: none;
-}
-.hero-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 3px;
-    color: var(--accent);
-    background: rgba(0,212,255,0.08);
-    border: 1px solid rgba(0,212,255,0.22);
-    padding: 6px 18px;
-    border-radius: 40px;
-    margin-bottom: 28px;
-    font-weight: 600;
-}
-.hero-pill::before { content: '●'; font-size: 0.5rem; animation: pulse-dot 2s infinite; }
-@keyframes pulse-dot {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.3; }
-}
-.hero-title {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(2.8rem, 6vw, 4.6rem);
-    color: var(--text);
-    font-weight: 800;
-    line-height: 1.08;
-    margin-bottom: 20px;
-    letter-spacing: -1px;
-}
-.hero-title span {
-    background: linear-gradient(135deg, var(--accent), #80eaff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-.hero-desc {
-    font-size: 1.05rem;
-    color: var(--text2);
-    max-width: 460px;
-    margin: 0 auto 48px;
-    line-height: 1.8;
-    font-weight: 300;
-}
-.hero-stats {
-    display: flex;
-    gap: 40px;
-    margin-bottom: 48px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-.hero-stat-val {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.8rem;
-    font-weight: 800;
-    color: var(--accent);
-}
-.hero-stat-label { font-size: 0.75rem; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
-
-/* ══ VS divider ═════════════════════════════════════════════════ */
-.vs-wrap {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-top: 52px;
-    font-family: 'Playfair Display', serif;
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: var(--gold);
-    text-shadow: 0 0 20px rgba(240,180,41,0.4);
-}
-
-/* ══ Empty state ════════════════════════════════════════════════ */
-.empty-state {
-    text-align: center;
-    padding: 80px 20px;
-}
-.empty-icon {
-    font-size: 3.5rem;
-    margin-bottom: 20px;
-    filter: grayscale(0.3);
-}
-.empty-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.9rem;
-    color: var(--text);
-    font-weight: 800;
-    margin-bottom: 10px;
-}
-.empty-desc {
-    color: var(--text3);
-    font-size: 0.92rem;
-    line-height: 1.8;
-    max-width: 380px;
-    margin: 0 auto;
-}
-.empty-badge {
-    display: inline-block;
-    background: rgba(0,212,255,0.08);
-    border: 1px solid rgba(0,212,255,0.2);
-    color: var(--accent);
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    padding: 5px 16px;
-    border-radius: 40px;
-    margin-bottom: 20px;
-}
-
-/* ══ CGPA Card ══════════════════════════════════════════════════ */
+/* ── CGPA Card ── */
 .cgpa-card {
-    background: linear-gradient(135deg, #0a1628 0%, #0d1e38 50%, #091523 100%);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius);
-    padding: 30px 34px;
+    background: linear-gradient(135deg, #1a1a2e, #2a2a50);
+    border-radius: 16px;
+    padding: 28px 32px;
     margin-top: 28px;
     margin-bottom: 16px;
-    position: relative;
-    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(26,26,46,0.18);
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 24px;
+    gap: 20px;
 }
-.cgpa-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--accent), var(--gold), var(--accent));
-    background-size: 200%;
-    animation: shimmer 3s linear infinite;
+.cgpa-left { flex: 1; min-width: 220px; }
+.cgpa-label {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 2px;
+    color: #9090c0; margin-bottom: 6px;
 }
-.cgpa-card::after {
-    content: '';
-    position: absolute;
-    bottom: -60px; right: -60px;
-    width: 200px; height: 200px;
-    background: radial-gradient(circle, rgba(0,212,255,0.05) 0%, transparent 70%);
-    border-radius: 50%;
+.cgpa-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.15rem; color: #ffffff; margin-bottom: 4px;
 }
-@keyframes shimmer {
-    0%   { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+.cgpa-formula {
+    font-size: 0.82rem; color: #9090c0; font-style: italic;
 }
-.cgpa-left { flex: 1; min-width: 220px; z-index: 1; }
-.cgpa-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 2.5px; color: var(--text3); margin-bottom: 8px; font-weight: 600; }
-.cgpa-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--text); margin-bottom: 6px; }
-.cgpa-formula { font-size: 0.78rem; color: var(--text3); font-style: italic; }
-.cgpa-right { text-align: right; z-index: 1; }
-.cgpa-value { font-family: 'Playfair Display', serif; font-size: 3.8rem; font-weight: 800; line-height: 1; }
-.cgpa-out-of { font-size: 0.78rem; color: var(--text3); margin-top: 6px; }
+.cgpa-right { text-align: right; }
+.cgpa-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 3.2rem; color: #e8c97e; line-height: 1;
+}
+.cgpa-out-of {
+    font-size: 0.82rem; color: #9090c0; margin-top: 4px;
+}
+.cgpa-breakdown {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 18px 24px;
+    border: 1px solid #e8e4da;
+    margin-bottom: 28px;
+}
+.cgpa-breakdown-title {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.8px;
+    color: #9090b0; margin-bottom: 12px;
+}
+.cgpa-sem-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid #f5f3ee; font-size: 0.88rem;
+}
+.cgpa-sem-row:last-child { border-bottom: none; }
+.cgpa-sem-name { color: #6060a0; }
+.cgpa-sem-details { color: #9090b0; font-size: 0.78rem; }
+.cgpa-sem-sgpa { font-weight: 700; color: #1a1a2e; }
 
-/* ══ Alert overrides ════════════════════════════════════════════ */
-.stAlert {
-    border-radius: var(--radius-sm) !important;
-    border: 1px solid !important;
-}
-div[data-testid="stSuccessMessage"] {
-    background: rgba(0,200,150,0.08) !important;
-    border-color: rgba(0,200,150,0.3) !important;
-    color: var(--success) !important;
-}
-div[data-testid="stErrorMessage"] {
-    background: rgba(255,90,110,0.08) !important;
-    border-color: rgba(255,90,110,0.3) !important;
-    color: var(--danger) !important;
-}
-div[data-testid="stWarningMessage"] {
-    background: rgba(255,179,71,0.08) !important;
-    border-color: rgba(255,179,71,0.3) !important;
-    color: var(--warn) !important;
-}
+/* ── Mobile Responsive ── */
+@media (max-width: 768px) {
+    .hero-title { font-size: 2rem !important; }
+    .hero-desc  { font-size: 0.92rem !important; }
+    .page-title { font-size: 1.5rem !important; }
 
-/* ══ Expander ═══════════════════════════════════════════════════ */
-.streamlit-expander {
-    background: var(--surface) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--radius) !important;
-    margin-bottom: 12px !important;
-}
-.streamlit-expander > div:first-child {
-    background: var(--surface2) !important;
-    border-radius: var(--radius) !important;
-}
+    .card {
+        padding: 16px 14px !important;
+        border-radius: 12px !important;
+    }
+    .card-value { font-size: 1.2rem !important; }
 
-/* ══ Table ══════════════════════════════════════════════════════ */
-.stTable table {
-    background: transparent !important;
-    border-collapse: collapse !important;
-    width: 100% !important;
-}
-.stTable th {
-    background: var(--surface2) !important;
-    color: var(--accent) !important;
-    font-size: 0.72rem !important;
-    text-transform: uppercase !important;
-    letter-spacing: 1.5px !important;
-    padding: 10px 14px !important;
-    border-bottom: 2px solid var(--border2) !important;
-    font-weight: 700 !important;
-}
-.stTable td {
-    color: var(--text) !important;
-    font-size: 0.88rem !important;
-    padding: 10px 14px !important;
-    border-bottom: 1px solid var(--border) !important;
-    background: transparent !important;
-}
-.stTable tr:hover td {
-    background: var(--surface2) !important;
-}
+    .cgpa-card {
+        flex-direction: column !important;
+        padding: 18px 16px !important;
+        gap: 12px !important;
+    }
+    .cgpa-value { font-size: 2.4rem !important; }
+    .cgpa-right { text-align: left !important; }
 
-/* ══ Divider ════════════════════════════════════════════════════ */
-hr {
-    border-color: var(--border) !important;
-    margin: 16px 0 !important;
-}
+    .sem-badge { min-width: 60px !important; padding: 8px 12px !important; }
+    .sem-badge .s-val { font-size: 1rem !important; }
 
-/* ══ Metric ═════════════════════════════════════════════════════ */
-.metric-chip {
-    background: var(--surface2);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-sm);
-    padding: 16px 20px;
-    text-align: center;
-    transition: all 0.2s;
-}
-.metric-chip:hover {
-    border-color: var(--accent);
-    box-shadow: 0 0 14px rgba(0,212,255,0.12);
-}
-.metric-chip-val {
-    font-size: 1.7rem;
-    font-weight: 800;
-    color: var(--accent);
-    font-family: 'Playfair Display', serif;
-}
-.metric-chip-label {
-    font-size: 0.65rem;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-top: 4px;
-    font-weight: 600;
-}
+    .info-row { flex-direction: column !important; align-items: flex-start !important; gap: 4px; }
 
-/* ══ Comparison subject card ════════════════════════════════════ */
-.subj-card {
-    border-radius: var(--radius-sm);
-    padding: 10px 14px;
-    margin-bottom: 7px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: opacity 0.2s;
-}
-.subj-card:hover { opacity: 0.85; }
-.subj-name { font-size: 0.86rem; color: var(--text); font-weight: 500; }
-.subj-score { font-weight: 800; font-size: 0.95rem; }
+    .stButton > button { font-size: 0.88rem !important; padding: 10px 14px !important; }
 
-/* ══ Gap card ═══════════════════════════════════════════════════ */
-.gap-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 14px 18px;
-    margin-bottom: 8px;
+    div[data-testid="stHorizontalBlock"] .stButton > button {
+        font-size: 0.92rem !important;
+        padding: 12px 16px !important;
+    }
+
+    .stTextInput > div > div > input {
+        font-size: 0.9rem !important;
+        padding: 10px 12px !important;
+    }
+
+    .vs-wrap { padding-top: 20px !important; font-size: 1.2rem !important; }
+
+    .sec-label { font-size: 0.68rem !important; }
+
+    .empty-state { padding: 40px 10px !important; }
+    .empty-title { font-size: 1.4rem !important; }
 }
-.gap-card-title { font-weight: 600; color: var(--text); font-size: 0.88rem; }
-.gap-badge {
-    background: rgba(0,200,150,0.15);
-    color: var(--success);
-    padding: 2px 10px;
-    border-radius: 20px;
-    font-size: 0.76rem;
-    font-weight: 700;
-    border: 1px solid rgba(0,200,150,0.25);
-}
-.gap-detail { margin-top: 6px; font-size: 0.8rem; color: var(--text3); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -590,12 +297,8 @@ hr {
 #  SIDEBAR NAVIGATION
 # ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
-    st.markdown("""
-    <div class="sidebar-brand">
-        <span class="sidebar-icon">🎓</span>
-        <div class="sidebar-title">Results App</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-logo">🎓 Results App</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-sub">Academic Portal</div>', unsafe_allow_html=True)
 
     nav_pages = {
         "Home":       "🏠  Home",
@@ -609,7 +312,8 @@ with st.sidebar:
             st.session_state.page = key
             st.rerun()
 
-    st.markdown('<div class="sidebar-footer">© Prahit Viraaj Reddy Madupu</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown('<p style="font-size:0.72rem;color:#404060;text-align:center;">©  Results Portal</p>', unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -618,7 +322,6 @@ with st.sidebar:
 if st.session_state.page == "Home":
     st.markdown("""
     <div class="hero-wrap">
-        <div class="hero-glow"></div>
         <div class="hero-pill">Academic Results Portal</div>
         <div class="hero-title">Welcome to<br><span>Results App</span></div>
         <div class="hero-desc">
@@ -631,7 +334,7 @@ if st.session_state.page == "Home":
 
     col_l, col_m, col_r = st.columns([2, 1, 2])
     with col_m:
-        if st.button("🚀  Get Started", use_container_width=True):
+        if st.button("🚀  Start", use_container_width=True):
             st.session_state.page = "Results"
             st.rerun()
 
@@ -640,12 +343,12 @@ if st.session_state.page == "Home":
 #  PAGE ▸ RESULTS
 # ══════════════════════════════════════════════════════════════════════════════
 elif st.session_state.page == "Results":
-    st.markdown('<div class="page-title">📋 Academic <span>Results</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-title">📋 Academic Results</div>', unsafe_allow_html=True)
     st.markdown('<div class="page-sub">Enter your Hall Ticket Number to fetch your results</div>', unsafe_allow_html=True)
 
     col_in, col_btn = st.columns([3, 1])
     with col_in:
-        hall_ticket = st.text_input("", placeholder="Enter Hall Ticket No.  e.g. 23D01A0001", label_visibility="collapsed")
+        hall_ticket = st.text_input("", placeholder="Enter Hall Ticket No.  e.g. 21A01A0501", label_visibility="collapsed")
     with col_btn:
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -657,159 +360,192 @@ elif st.session_state.page == "Results":
             if student_data.empty:
                 st.error("❌ No record found for this Hall Ticket Number")
             else:
-                name   = student_data["name"].iloc[0]
+                log_activity(hall_ticket, "Results")
+                # Student information
+                name = student_data["name"].iloc[0]
                 branch = student_data["branch"].iloc[0]
 
-                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown(f"### 👤 {name}")
+                st.caption(f"Branch: {branch}")
 
-                # ── Student header cards ──
-                c1, c2 = st.columns(2)
-                c1.markdown(f"""
-                <div class="card">
-                    <div class="card-label">👤 Student Name</div>
-                    <div class="card-value">{name}</div>
-                </div>""", unsafe_allow_html=True)
-                c2.markdown(f"""
-                <div class="card">
-                    <div class="card-label">🏫 Branch</div>
-                    <div class="card-value">{branch}</div>
-                </div>""", unsafe_allow_html=True)
+                # Columns to display
+                columns = [
+                    "subjectCode",
+                    "subjectName",
+                    "internal",
+                    "external",
+                    "total",
+                    "grade",
+                    "credits"
+                ]
 
-                columns = ["subjectCode","subjectName","internal","external","total","grade","credits"]
-                grades_map = {'O':10,'A+':9,'A':8,'B+':7,'B':6,'C':5,'F':0,'Ab':0}
+                grades_map = {'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6, 'C': 5, 'F': 0, 'Ab': 0}
+
+                # Track per-semester SGPA for CGPA calculation
                 semester_sgpa_data = []
 
+                # Semester-wise results
                 semesters = sorted(student_data["semester"].unique())
                 for sem in semesters:
                     with st.expander(f"📘 Semester {sem}", expanded=True):
-                        sem_df = student_data[student_data["semester"] == sem].reset_index(drop=True)
+                        sem_df = student_data[
+                            student_data["semester"] == sem
+                        ].reset_index(drop=True)
                         st.table(sem_df[columns])
-                        sem_df2 = student_data[student_data["semester"] == sem].copy()
-
-                        # SGPA: show only if ALL subjects in this semester are cleared (no F, no Ab)
-                        is_pass = all(sem_df2["grade"] != 'F') and all(sem_df2["grade"] != 'Ab')
-                        sem_df2['grade_point'] = sem_df2['grade'].map(grades_map)
-                        total_credits = sem_df2['credits'].sum()
+                        sem_df = student_data[student_data["semester"] == sem].copy()
+                        is_pass = all(sem_df["grade"] != 'F') and all(sem_df["grade"] != 'Ab')
+                        sem_df['grade_point'] = sem_df['grade'].map(grades_map)
+                        total_credits = sem_df['credits'].sum()
 
                         if is_pass:
-                            sgpa = (sem_df2['grade_point'] * sem_df2['credits']).sum() / total_credits
-                            st.success(f"🎯 Semester {sem} SGPA: {sgpa:.2f}")
-                            semester_sgpa_data.append({"sem": sem, "sgpa": sgpa, "credits": total_credits, "passed": True})
+                            sgpa = (sem_df['grade_point'] * sem_df['credits']).sum() / total_credits
+                            st.success(f"🎯 **Semester {sem} SGPA: {sgpa:.2f}**")
+                            semester_sgpa_data.append({
+                                "sem": sem,
+                                "sgpa": sgpa,
+                                "credits": total_credits,
+                                "passed": True
+                            })
                         else:
-                            # Don't show SGPA — just record as failed, no message
-                            semester_sgpa_data.append({"sem": sem, "sgpa": None, "credits": total_credits, "passed": False})
+                            semester_sgpa_data.append({
+                                "sem": sem,
+                                "sgpa": None,
+                                "credits": total_credits,
+                                "passed": False
+                            })
 
-                # ── CGPA Block: always show, — if any backlog exists ──
-                all_passed = all(s["passed"] for s in semester_sgpa_data)
+                # ── CGPA Section ──────────────────────────────────────────────
+                st.markdown("<br>", unsafe_allow_html=True)
 
-                if all_passed and semester_sgpa_data:
-                    tw = sum(s["sgpa"] * s["credits"] for s in semester_sgpa_data)
-                    tc = sum(s["credits"] for s in semester_sgpa_data)
-                    cgpa_display = f"{tw/tc:.2f}" if tc > 0 else "—"
-                    cgpa_style   = "color: var(--gold);"
-                    cgpa_sub     = "out of 10.00"
+                all_sems_passed = all(s["passed"] for s in semester_sgpa_data)
+
+                if all_sems_passed and semester_sgpa_data:
+                    total_weighted = sum(s["sgpa"] * s["credits"] for s in semester_sgpa_data)
+                    total_credits_all = sum(s["credits"] for s in semester_sgpa_data)
+                    cgpa = total_weighted / total_credits_all if total_credits_all > 0 else 0.0
+                    cgpa_display = f"{cgpa:.2f}"
+                    cgpa_sub = "out of 10.00"
+                    cgpa_value_style = "color:#e8c97e;"
                 else:
                     cgpa_display = "—"
-                    cgpa_style   = "color: var(--danger);"
-                    cgpa_sub     = "clear all backlogs to unlock CGPA"
+                    cgpa_sub = "clear all backlogs to unlock CGPA"
+                    cgpa_value_style = "color:#c06060;"
 
-                st.markdown("<br>", unsafe_allow_html=True)
+                # CGPA main card
                 st.markdown(f"""
                 <div class="cgpa-card">
                     <div class="cgpa-left">
                         <div class="cgpa-label">Overall Performance</div>
                         <div class="cgpa-title">Cumulative Grade Point Average</div>
-                        <div class="cgpa-formula">CGPA = Σ(Semester SGPA × Credits) ÷ Σ(Total Credits)</div>
+                        <div class="cgpa-formula">
+                            CGPA = Σ(Semester SGPA × Semester Credits) ÷ Σ(Total Semester Credits)
+                        </div>
                     </div>
                     <div class="cgpa-right">
-                        <div class="cgpa-value" style="{cgpa_style}">{cgpa_display}</div>
+                        <div class="cgpa-value" style="{cgpa_value_style}">{cgpa_display}</div>
                         <div class="cgpa-out-of">{cgpa_sub}</div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
 
 
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE ▸ INSIGHTS
 # ══════════════════════════════════════════════════════════════════════════════
 elif st.session_state.page == "Insights":
+
     import plotly.express as px
 
-    grades_map = {"O":10,"A+":9,"A":8,"B+":7,"B":6,"C":5,"P":4,"F":0,"AB":0}
+    grades_map = {
+        "O": 10, "A+": 9, "A": 8, "B+": 7, "B": 6,
+        "C": 5, "P": 4, "F": 0, "AB": 0
+    }
 
-    st.markdown('<div class="page-title">💡 <span>Insights</span></div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">Performance Analytics — Enter your Hall Ticket Number</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-title">💡 Insights</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Performance Analytics</div>', unsafe_allow_html=True)
 
-    ht = st.text_input("", placeholder="Enter Hall Ticket Number", label_visibility="collapsed", key="insights_ht")
+    ht = st.text_input("Enter Hall Ticket Number")
 
     if ht:
         student = df[df["rollNumber"].str.upper() == ht.upper()].copy()
-        if student.empty:
-            st.error("❌ Student Not Found")
-            st.stop()
 
-        PLOTLY_LAYOUT = dict(
-            paper_bgcolor="rgba(13,21,38,0)",
-            plot_bgcolor="rgba(13,21,38,0)",
-            font=dict(family="Outfit", color="#7a90b8"),
-            margin=dict(l=10, r=10, t=20, b=10),
-            xaxis=dict(gridcolor="#1a2d4a", linecolor="#1a2d4a", tickfont=dict(color="#7a90b8")),
-            yaxis=dict(gridcolor="#1a2d4a", linecolor="#1a2d4a", tickfont=dict(color="#7a90b8")),
-            legend=dict(bgcolor="rgba(13,21,38,0.8)", bordercolor="#1a2d4a", borderwidth=1, font=dict(color="#7a90b8")),
+        if student.empty:
+            st.error("Student Not Found")
+            st.stop()
+        log_activity(ht, "Insights")
+
+        # ── Subject Performance ──────────────────────────────────────────
+        st.subheader("📊 Subject Performance")
+
+        subject_scores = (
+            student.groupby("subjectName")["total"]
+            .mean()
+            .sort_values(ascending=False)
         )
 
-        # ── Subject Performance ──
-        st.markdown('<div class="sec-label">📊 Subject Performance</div>', unsafe_allow_html=True)
-        subject_scores = student.groupby("subjectName")["total"].mean().sort_values(ascending=False)
-        fig1 = px.line(x=subject_scores.index, y=subject_scores.values, markers=True,
-                       labels={"x":"Subject","y":"Marks"}, height=420)
-        fig1.update_traces(
-            line=dict(color="#00d4ff", width=3),
-            marker=dict(size=10, color="#00d4ff", line=dict(color="#070b14", width=2)),
-            hovertemplate="<b>%{x}</b><br>Marks: %{y}<extra></extra>",
-            fill="tozeroy", fillcolor="rgba(0,212,255,0.05)"
+        fig1 = px.line(
+            x=subject_scores.index,
+            y=subject_scores.values,
+            markers=True,
+            labels={"x": "Subject", "y": "Marks"},
+            height=450
         )
         fig1.update_xaxes(showticklabels=False)
-        fig1.update_layout(**PLOTLY_LAYOUT, dragmode=False)
+        fig1.update_layout(dragmode=False)
+        fig1.update_traces(
+            hovertemplate="<b>%{x}</b><br>Marks: %{y}<extra></extra>"
+        )
         st.plotly_chart(fig1, use_container_width=True, config={"displayModeBar": False})
 
-        # ── SGPA Progression ──
-        st.markdown('<div class="sec-label">📈 SGPA Progression</div>', unsafe_allow_html=True)
+        # ── SGPA Progression ─────────────────────────────────────────────
         student["grade_point"] = student["grade"].str.strip().map(grades_map)
-        sgpa_sem = student.groupby("semester").apply(
-            lambda x: (x["grade_point"] * x["credits"]).sum() / x["credits"].sum()
+
+        sgpa_sem = (
+            student.groupby("semester")
+            .apply(lambda x: (x["grade_point"] * x["credits"]).sum() / x["credits"].sum())
         )
-        fig2 = px.line(x=sgpa_sem.index, y=sgpa_sem.values, markers=True,
-                       labels={"x":"Semester","y":"SGPA"}, height=380)
+
+        st.subheader("📈 SGPA Progression")
+
+        fig2 = px.line(
+            x=sgpa_sem.index,
+            y=sgpa_sem.values,
+            markers=True,
+            labels={"x": "Semester", "y": "SGPA"},
+            height=400
+        )
+        fig2.update_xaxes(showticklabels=False)
+        fig2.update_layout(dragmode=False)
         fig2.update_traces(
-            line=dict(color="#f0b429", width=3),
-            marker=dict(size=10, color="#f0b429", line=dict(color="#070b14", width=2)),
-            hovertemplate="<b>Sem %{x}</b><br>SGPA: %{y:.2f}<extra></extra>",
-            fill="tozeroy", fillcolor="rgba(240,180,41,0.05)"
+            hovertemplate="<b>%{x}</b><br>SGPA: %{y}<extra></extra>"
         )
-        fig2.update_layout(**PLOTLY_LAYOUT, dragmode=False)
         st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
 
-        # ── Best & Weak ──
-        st.markdown('<div class="sec-label">🏆 Best & Weak Subjects</div>', unsafe_allow_html=True)
-        subject_avg = student.groupby("subjectName")["total"].mean().sort_values(ascending=False)
+        # ── Best & Weak Subjects ─────────────────────────────────────────
+        st.subheader("🏆 Best & Weak Subjects")
+
+        subject_avg = (
+            student.groupby("subjectName")["total"]
+            .mean()
+            .sort_values(ascending=False)
+        )
+
+        best_subjects = subject_avg.head(3)
+        weak_subjects = subject_avg.tail(3)
+
         col1, col2 = st.columns(2)
+
         with col1:
-            st.markdown('<div style="font-size:0.78rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;">🟢 Top Subjects</div>', unsafe_allow_html=True)
-            for subj, score in subject_avg.head(3).items():
-                st.markdown(f"""
-                <div class="subj-card" style="background:rgba(0,200,150,0.08);border:1px solid rgba(0,200,150,0.2);">
-                    <span class="subj-name">{subj[:32]}</span>
-                    <span class="subj-score" style="color:var(--success);">{int(score)}</span>
-                </div>""", unsafe_allow_html=True)
+            st.markdown("### Top Subjects")
+            for subject, score in best_subjects.items():
+                st.success(f"{subject} — {score:.0f}")
+
         with col2:
-            st.markdown('<div style="font-size:0.78rem;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;">🔴 Weak Subjects</div>', unsafe_allow_html=True)
-            for subj, score in subject_avg.tail(3).items():
-                st.markdown(f"""
-                <div class="subj-card" style="background:rgba(255,90,110,0.08);border:1px solid rgba(255,90,110,0.2);">
-                    <span class="subj-name">{subj[:32]}</span>
-                    <span class="subj-score" style="color:var(--danger);">{int(score)}</span>
-                </div>""", unsafe_allow_html=True)
+            st.markdown("### Weak Subjects")
+            for subject, score in weak_subjects.items():
+                st.error(f"{subject} — {score:.0f}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -817,24 +553,25 @@ elif st.session_state.page == "Insights":
 # ══════════════════════════════════════════════════════════════════════════════
 elif st.session_state.page == "Comparison":
     import plotly.graph_objects as go
+    import plotly.express as px
 
-    st.markdown('<div class="page-title">⚖️ Compare <span>Results</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-title">⚖️ Compare Results</div>', unsafe_allow_html=True)
     st.markdown('<div class="page-sub">Enter two Hall Ticket Numbers to compare academic performance side by side</div>', unsafe_allow_html=True)
 
     col_s1, col_vs, col_s2 = st.columns([5, 1, 5])
     with col_s1:
-        st.markdown('<div style="text-align:center;font-weight:700;color:var(--text);margin-bottom:8px;font-size:0.9rem;text-transform:uppercase;letter-spacing:1px;">Student 1</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center;font-weight:600;color:#1a1a2e;margin-bottom:4px">Student 1</div>', unsafe_allow_html=True)
         ht1 = st.text_input("", placeholder="Hall Ticket No. 1", key="ht1", label_visibility="collapsed")
     with col_vs:
         st.markdown('<div class="vs-wrap">VS</div>', unsafe_allow_html=True)
     with col_s2:
-        st.markdown('<div style="text-align:center;font-weight:700;color:var(--text);margin-bottom:8px;font-size:0.9rem;text-transform:uppercase;letter-spacing:1px;">Student 2</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center;font-weight:600;color:#1a1a2e;margin-bottom:4px">Student 2</div>', unsafe_allow_html=True)
         ht2 = st.text_input("", placeholder="Hall Ticket No. 2", key="ht2", label_visibility="collapsed")
 
     st.markdown("<br>", unsafe_allow_html=True)
     _, mid, _ = st.columns([2, 1, 2])
     with mid:
-        compare_btn = st.button("⚖️  Compare Now", use_container_width=True)
+        compare_btn = st.button("⚖️  Compare", use_container_width=True)
 
     if compare_btn:
         errors = []
@@ -853,57 +590,83 @@ elif st.session_state.page == "Comparison":
             for e in errors:
                 st.error(f"❌  {e}")
         else:
-            grades_map = {'O':10,'A+':9,'A':8,'B+':7,'B':6,'C':5,'P':4,'F':0,'Ab':0}
+            grades_map = {'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6, 'C': 5, 'P': 4, 'F': 0, 'Ab': 0}
+            log_activity(ht1 + " vs " + ht2, "Comparison")
+
             name1 = d1["name"].iloc[0]
             name2 = d2["name"].iloc[0]
 
-            PLOTLY_LAYOUT = dict(
-                paper_bgcolor="rgba(13,21,38,0)",
-                plot_bgcolor="rgba(13,21,38,0)",
-                font=dict(family="Outfit", color="#7a90b8"),
-                margin=dict(l=10, r=10, t=20, b=10),
-                xaxis=dict(gridcolor="#1a2d4a", linecolor="#1a2d4a", tickfont=dict(color="#7a90b8")),
-                yaxis=dict(gridcolor="#1a2d4a", linecolor="#1a2d4a", tickfont=dict(color="#7a90b8")),
-                legend=dict(bgcolor="rgba(13,21,38,0.8)", bordercolor="#1a2d4a", borderwidth=1, font=dict(color="#e8f0fe")),
-            )
-
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # ── Profile cards ──
+            # ── Side by side info cards ───────────────────────────────────
             c1, c2 = st.columns(2)
-
-            def make_profile_card(data, name, ht, col):
-                d = data.copy()
-                d["gp"] = d["grade"].str.strip().map(grades_map)
-                passed = all(data["grade"].isin(["O","A+","A","B+","B","C","P"]))
-                cgpa_str = f"{(d['gp']*d['credits']).sum()/d['credits'].sum():.2f}" if passed else "—"
-                cgpa_color = "var(--gold)" if passed else "var(--danger)"
-                col.markdown(f"""
+            with c1:
+                total1 = d1["total"].sum()
+                credits1 = d1["credits"].sum()
+                d1c = d1.copy()
+                d1c["gp"] = d1c["grade"].str.strip().map(grades_map)
+                passed1 = all(d1["grade"].isin(["O","A+","A","B+","B","C","P"]))
+                if passed1:
+                    cgpa1 = (d1c["gp"] * d1c["credits"]).sum() / d1c["credits"].sum()
+                    cgpa1_str = f"{cgpa1:.2f}"
+                else:
+                    cgpa1_str = "—"
+                st.markdown(f"""
                 <div class="card">
-                    <div class="card-label">👤 Student</div>
-                    <div class="card-value">{name}</div>
-                    <div style="margin-top:16px;display:flex;gap:20px;flex-wrap:wrap;">
-                        <div class="metric-chip" style="flex:1;min-width:80px;">
-                            <div class="metric-chip-val">{int(data['total'].sum())}</div>
-                            <div class="metric-chip-label">Total Marks</div>
+                    <div class="card-label">👤 Student 1</div>
+                    <div class="card-value">{name1}</div>
+                    <div style="margin-top:14px;display:flex;gap:24px;">
+                        <div>
+                            <div class="card-label">Total Marks</div>
+                            <div style="font-weight:700;font-size:1.2rem;color:#1a1a2e;">{int(total1)}</div>
                         </div>
-                        <div class="metric-chip" style="flex:1;min-width:80px;">
-                            <div class="metric-chip-val">{int(data['credits'].sum())}</div>
-                            <div class="metric-chip-label">Credits</div>
+                        <div>
+                            <div class="card-label">Credits</div>
+                            <div style="font-weight:700;font-size:1.2rem;color:#1a1a2e;">{int(credits1)}</div>
                         </div>
-                        <div class="metric-chip" style="flex:1;min-width:80px;">
-                            <div class="metric-chip-val" style="color:{cgpa_color};">{cgpa_str}</div>
-                            <div class="metric-chip-label">CGPA</div>
+                        <div>
+                            <div class="card-label">CGPA</div>
+                            <div style="font-weight:700;font-size:1.2rem;color:#c8a84b;">{cgpa1_str}</div>
                         </div>
                     </div>
-                </div>""", unsafe_allow_html=True)
+                </div>
+                """, unsafe_allow_html=True)
 
-            make_profile_card(d1, name1, ht1, c1)
-            make_profile_card(d2, name2, ht2, c2)
+            with c2:
+                total2 = d2["total"].sum()
+                credits2 = d2["credits"].sum()
+                d2c = d2.copy()
+                d2c["gp"] = d2c["grade"].str.strip().map(grades_map)
+                passed2 = all(d2["grade"].isin(["O","A+","A","B+","B","C","P"]))
+                if passed2:
+                    cgpa2 = (d2c["gp"] * d2c["credits"]).sum() / d2c["credits"].sum()
+                    cgpa2_str = f"{cgpa2:.2f}"
+                else:
+                    cgpa2_str = "—"
+                st.markdown(f"""
+                <div class="card">
+                    <div class="card-label">👤 Student 2</div>
+                    <div class="card-value">{name2}</div>
+                    <div style="margin-top:14px;display:flex;gap:24px;">
+                        <div>
+                            <div class="card-label">Total Marks</div>
+                            <div style="font-weight:700;font-size:1.2rem;color:#1a1a2e;">{int(total2)}</div>
+                        </div>
+                        <div>
+                            <div class="card-label">Credits</div>
+                            <div style="font-weight:700;font-size:1.2rem;color:#1a1a2e;">{int(credits2)}</div>
+                        </div>
+                        <div>
+                            <div class="card-label">CGPA</div>
+                            <div style="font-weight:700;font-size:1.2rem;color:#c8a84b;">{cgpa2_str}</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # ── SGPA Trend ──
+            # ── SGPA Trend ────────────────────────────────────────────────
             st.markdown('<div class="sec-label">📈 SGPA Trend Comparison</div>', unsafe_allow_html=True)
 
             def get_sgpa_trend(data):
@@ -917,145 +680,196 @@ elif st.session_state.page == "Comparison":
                         result.append({"Semester": str(sem), "SGPA": round(sgpa, 2)})
                 return result
 
-            t1_data, t2_data = get_sgpa_trend(d1), get_sgpa_trend(d2)
+            trend1 = get_sgpa_trend(d1)
+            trend2 = get_sgpa_trend(d2)
+
             fig_sgpa = go.Figure()
-            if t1_data:
-                t1 = pd.DataFrame(t1_data)
+            if trend1:
+                t1 = pd.DataFrame(trend1)
                 fig_sgpa.add_trace(go.Scatter(
-                    x=t1["Semester"], y=t1["SGPA"], mode="lines+markers+text",
-                    name=name1, text=t1["SGPA"], textposition="top center",
-                    line=dict(color="#00d4ff", width=3),
-                    marker=dict(size=10, color="#00d4ff", line=dict(color="#070b14",width=2)),
-                    textfont=dict(size=11, color="#00d4ff"),
-                    hovertemplate="<b>Sem %{x}</b><br>SGPA: %{y}<extra></extra>"
+                    x=t1["Semester"], y=t1["SGPA"],
+                    mode="lines+markers+text", name=name1,
+                    text=t1["SGPA"], textposition="top center",
+                    line=dict(color="#c8a84b", width=3),
+                    marker=dict(size=9, color="#c8a84b"),
+                    textfont=dict(size=11, color="#c8a84b")
                 ))
-            if t2_data:
-                t2 = pd.DataFrame(t2_data)
+            if trend2:
+                t2 = pd.DataFrame(trend2)
                 fig_sgpa.add_trace(go.Scatter(
-                    x=t2["Semester"], y=t2["SGPA"], mode="lines+markers+text",
-                    name=name2, text=t2["SGPA"], textposition="bottom center",
-                    line=dict(color="#f0b429", width=3, dash="dot"),
-                    marker=dict(size=10, color="#f0b429", line=dict(color="#070b14",width=2)),
-                    textfont=dict(size=11, color="#f0b429"),
-                    hovertemplate="<b>Sem %{x}</b><br>SGPA: %{y}<extra></extra>"
+                    x=t2["Semester"], y=t2["SGPA"],
+                    mode="lines+markers+text", name=name2,
+                    text=t2["SGPA"], textposition="bottom center",
+                    line=dict(color="#1a1a2e", width=3, dash="dot"),
+                    marker=dict(size=9, color="#1a1a2e"),
+                    textfont=dict(size=11, color="#1a1a2e")
                 ))
-            fig_sgpa.update_layout(**PLOTLY_LAYOUT, yaxis_range=[0, 10.5], height=360)
+            fig_sgpa.update_layout(
+                paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
+                font=dict(family="DM Sans", color="#1a1a2e"),
+                yaxis=dict(range=[0, 10.5], gridcolor="#e8e4da", title="SGPA"),
+                xaxis=dict(gridcolor="#e8e4da", title="Semester"),
+                legend=dict(bgcolor="#ffffff", bordercolor="#e8e4da", borderwidth=1),
+                margin=dict(l=20, r=20, t=20, b=20),
+                height=360
+            )
             st.plotly_chart(fig_sgpa, use_container_width=True, config={"displayModeBar": False})
 
-            # ── Winner Card ──
+            # ── Winner Card ───────────────────────────────────────────────
             st.markdown('<div class="sec-label">🏆 Overall Winner</div>', unsafe_allow_html=True)
-            avg1, avg2 = d1["total"].mean(), d2["total"].mean()
+
+            avg1 = d1["total"].mean()
+            avg2 = d2["total"].mean()
             if avg1 > avg2:
                 winner, loser, w_avg, l_avg = name1, name2, avg1, avg2
+                winner_color = "#2e7d32"; winner_bg = "#e8f5e9"
             elif avg2 > avg1:
                 winner, loser, w_avg, l_avg = name2, name1, avg2, avg1
+                winner_color = "#2e7d32"; winner_bg = "#e8f5e9"
             else:
                 winner = None
 
             if winner:
                 st.markdown(f"""
-                <div class="card" style="border-left:3px solid var(--success);background:rgba(0,200,150,0.05);">
+                <div class="card" style="border-left: 5px solid #2e7d32; background:{winner_bg};">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <div>
-                            <div class="card-label" style="color:var(--success);">🏆 Leading Student</div>
-                            <div class="card-value" style="color:var(--success);">{winner}</div>
-                            <div class="card-sub">Avg Marks: {w_avg:.1f} &nbsp;·&nbsp; {loser}: {l_avg:.1f}</div>
+                            <div class="card-label">🏆 Leading Student</div>
+                            <div class="card-value" style="color:#2e7d32;">{winner}</div>
+                            <div class="card-sub">Avg Marks: {w_avg:.1f} &nbsp;|&nbsp; {loser}: {l_avg:.1f}</div>
                         </div>
-                        <div style="font-size:3rem;opacity:0.85;">🥇</div>
+                        <div style="font-size:3rem;">🥇</div>
                     </div>
-                </div>""", unsafe_allow_html=True)
+                </div>
+                """, unsafe_allow_html=True)
             else:
                 st.markdown(f"""
-                <div class="card" style="border-left:3px solid var(--gold);">
-                    <div class="card-label" style="color:var(--gold);">⚖️ It's a Tie!</div>
+                <div class="card" style="border-left:5px solid #c8a84b;">
+                    <div class="card-label">⚖️ It's a Tie!</div>
                     <div class="card-value">Both students are equal</div>
                     <div class="card-sub">Avg Marks: {avg1:.1f}</div>
-                </div>""", unsafe_allow_html=True)
+                </div>
+                """, unsafe_allow_html=True)
 
-            # ── Best vs Weak ──
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # ── Best & Weak Subjects Side by Side ────────────────────────
             st.markdown('<div class="sec-label">📚 Best vs Weak Subjects</div>', unsafe_allow_html=True)
+
             col_b1, col_b2 = st.columns(2)
 
-            def subject_cards(col, data, label, show_top=True):
+            def subject_cards(data, label, show_top=True):
                 avg = data.groupby("subjectName")["total"].mean().sort_values(ascending=not show_top)
                 subjects = avg.head(3)
                 icon = "🟢" if show_top else "🔴"
                 title = "Best" if show_top else "Weak"
-                color = "var(--success)" if show_top else "var(--danger)"
-                bg = "rgba(0,200,150,0.08)" if show_top else "rgba(255,90,110,0.08)"
-                border = "rgba(0,200,150,0.2)" if show_top else "rgba(255,90,110,0.2)"
-                col.markdown(f'<div style="font-size:0.72rem;font-weight:700;color:{color};text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;">{icon} {title} — {label}</div>', unsafe_allow_html=True)
+                bg = "#e8f5e9" if show_top else "#ffebee"
+                color = "#2e7d32" if show_top else "#c62828"
+                st.markdown(f'<div style="font-weight:600;color:#1a1a2e;margin-bottom:8px;">{icon} {title} — {label}</div>', unsafe_allow_html=True)
                 for subj, score in subjects.items():
-                    col.markdown(f"""
-                    <div class="subj-card" style="background:{bg};border:1px solid {border};">
-                        <span class="subj-name">{subj[:30]}</span>
-                        <span class="subj-score" style="color:{color};">{int(score)}</span>
-                    </div>""", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div style="background:{bg};border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:0.88rem;color:#1a1a2e;font-weight:500;">{subj[:30]}</span>
+                        <span style="font-weight:700;color:{color};">{int(score)}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
 
             with col_b1:
-                subject_cards(col_b1, d1, name1, show_top=True)
+                subject_cards(d1, name1, show_top=True)
                 st.markdown("<br>", unsafe_allow_html=True)
-                subject_cards(col_b1, d1, name1, show_top=False)
-            with col_b2:
-                subject_cards(col_b2, d2, name2, show_top=True)
-                st.markdown("<br>", unsafe_allow_html=True)
-                subject_cards(col_b2, d2, name2, show_top=False)
+                subject_cards(d1, name1, show_top=False)
 
-            # ── Common Subjects Analysis ──
+            with col_b2:
+                subject_cards(d2, name2, show_top=True)
+                st.markdown("<br>", unsafe_allow_html=True)
+                subject_cards(d2, name2, show_top=False)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # ── Common Strong & Weak Subjects ─────────────────────────────
             common_subjects = set(d1["subjectName"]) & set(d2["subjectName"])
             if common_subjects:
-                subj1 = d1[d1["subjectName"].isin(common_subjects)][["subjectName","total"]].rename(columns={"total":name1})
-                subj2 = d2[d2["subjectName"].isin(common_subjects)][["subjectName","total"]].rename(columns={"total":name2})
+                subj1 = d1[d1["subjectName"].isin(common_subjects)][["subjectName","total"]].rename(columns={"total": name1})
+                subj2 = d2[d2["subjectName"].isin(common_subjects)][["subjectName","total"]].rename(columns={"total": name2})
                 merged = pd.merge(subj1, subj2, on="subjectName")
-                merged["avg"]  = (merged[name1] + merged[name2]) / 2
+                merged["avg"] = (merged[name1] + merged[name2]) / 2
                 merged["diff"] = abs(merged[name1] - merged[name2])
+
+                common_strong = merged.sort_values("avg", ascending=False).head(3)
+                common_weak   = merged.sort_values("avg").head(3)
+                most_diff     = merged.sort_values("diff", ascending=False).head(3)
 
                 col_cs, col_cw = st.columns(2)
                 with col_cs:
                     st.markdown('<div class="sec-label">🟢 Common Strong Subjects</div>', unsafe_allow_html=True)
-                    for _, row in merged.sort_values("avg", ascending=False).head(3).iterrows():
+                    for _, row in common_strong.iterrows():
                         st.markdown(f"""
-                        <div class="subj-card" style="background:rgba(0,200,150,0.08);border:1px solid rgba(0,200,150,0.2);">
-                            <span class="subj-name">{row['subjectName'][:28]}</span>
-                            <span class="subj-score" style="color:var(--success);">avg {row['avg']:.0f}</span>
-                        </div>""", unsafe_allow_html=True)
+                        <div style="background:#e8f5e9;border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;">
+                            <span style="font-size:0.88rem;color:#1a1a2e;font-weight:500;">{row['subjectName'][:28]}</span>
+                            <span style="color:#2e7d32;font-weight:700;">avg {row['avg']:.0f}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+
                 with col_cw:
                     st.markdown('<div class="sec-label">🔴 Common Weak Subjects</div>', unsafe_allow_html=True)
-                    for _, row in merged.sort_values("avg").head(3).iterrows():
+                    for _, row in common_weak.iterrows():
                         st.markdown(f"""
-                        <div class="subj-card" style="background:rgba(255,90,110,0.08);border:1px solid rgba(255,90,110,0.2);">
-                            <span class="subj-name">{row['subjectName'][:28]}</span>
-                            <span class="subj-score" style="color:var(--danger);">avg {row['avg']:.0f}</span>
-                        </div>""", unsafe_allow_html=True)
-
-                st.markdown('<div class="sec-label">⚡ Biggest Performance Gap</div>', unsafe_allow_html=True)
-                for _, row in merged.sort_values("diff", ascending=False).head(3).iterrows():
-                    leader = name1 if row[name1] > row[name2] else name2
-                    st.markdown(f"""
-                    <div class="gap-card">
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span class="gap-card-title">{row['subjectName'][:35]}</span>
-                            <span class="gap-badge">+{row['diff']:.0f} gap</span>
+                        <div style="background:#ffebee;border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;">
+                            <span style="font-size:0.88rem;color:#1a1a2e;font-weight:500;">{row['subjectName'][:28]}</span>
+                            <span style="color:#c62828;font-weight:700;">avg {row['avg']:.0f}</span>
                         </div>
-                        <div class="gap-detail">🏆 {leader}: <b style="color:var(--success);">{int(max(row[name1],row[name2]))}</b> &nbsp;·&nbsp; other: {int(min(row[name1],row[name2]))}</div>
-                    </div>""", unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
 
-            # ── Semester-wise Improvement ──
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown('<div class="sec-label">⚡ Biggest Performance Gap</div>', unsafe_allow_html=True)
+                for _, row in most_diff.iterrows():
+                    leader = name1 if row[name1] > row[name2] else name2
+                    leader_score = max(row[name1], row[name2])
+                    lagger_score = min(row[name1], row[name2])
+                    st.markdown(f"""
+                    <div class="card" style="padding:14px 18px;margin-bottom:8px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-weight:600;color:#1a1a2e;font-size:0.9rem;">{row['subjectName'][:35]}</span>
+                            <span style="background:#e8f5e9;color:#2e7d32;padding:2px 10px;border-radius:20px;font-size:0.8rem;font-weight:600;">+{row['diff']:.0f} gap</span>
+                        </div>
+                        <div style="margin-top:6px;font-size:0.82rem;color:#9090b0;">
+                            🏆 {leader}: <b style="color:#2e7d32;">{int(leader_score)}</b> &nbsp;|&nbsp; {int(lagger_score)}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            # ── Semester-wise Improvement ─────────────────────────────────
+            st.markdown("<br>", unsafe_allow_html=True)
             st.markdown('<div class="sec-label">📈 Semester-wise Improvement</div>', unsafe_allow_html=True)
-            sem1 = d1.groupby("semester")["total"].mean().reset_index().rename(columns={"total":"avg"})
-            sem2 = d2.groupby("semester")["total"].mean().reset_index().rename(columns={"total":"avg"})
+
+            def get_sem_avg(data):
+                return data.groupby("semester")["total"].mean().reset_index().rename(columns={"total": "avg"})
+
+            sem1 = get_sem_avg(d1)
+            sem2 = get_sem_avg(d2)
+
             fig_imp = go.Figure()
             fig_imp.add_trace(go.Scatter(
-                x=sem1["semester"].astype(str), y=sem1["avg"], mode="lines+markers",
-                name=name1, line=dict(color="#00d4ff",width=3),
-                marker=dict(size=9,color="#00d4ff",line=dict(color="#070b14",width=2)),
-                hovertemplate="<b>Sem %{x}</b><br>Avg: %{y:.1f}<extra></extra>"
+                x=sem1["semester"].astype(str), y=sem1["avg"],
+                mode="lines+markers", name=name1,
+                line=dict(color="#c8a84b", width=3),
+                marker=dict(size=9, color="#c8a84b"),
+                hovertemplate="<b>%{x}</b><br>Avg: %{y:.1f}<extra></extra>"
             ))
             fig_imp.add_trace(go.Scatter(
-                x=sem2["semester"].astype(str), y=sem2["avg"], mode="lines+markers",
-                name=name2, line=dict(color="#f0b429",width=3,dash="dot"),
-                marker=dict(size=9,color="#f0b429",line=dict(color="#070b14",width=2)),
-                hovertemplate="<b>Sem %{x}</b><br>Avg: %{y:.1f}<extra></extra>"
+                x=sem2["semester"].astype(str), y=sem2["avg"],
+                mode="lines+markers", name=name2,
+                line=dict(color="#1a1a2e", width=3, dash="dot"),
+                marker=dict(size=9, color="#1a1a2e"),
+                hovertemplate="<b>%{x}</b><br>Avg: %{y:.1f}<extra></extra>"
             ))
-            fig_imp.update_layout(**PLOTLY_LAYOUT, height=340)
+            fig_imp.update_layout(
+                paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
+                font=dict(family="DM Sans", color="#1a1a2e"),
+                xaxis=dict(gridcolor="#e8e4da", title="Semester"),
+                yaxis=dict(gridcolor="#e8e4da", title="Avg Marks"),
+                legend=dict(bgcolor="#ffffff", bordercolor="#e8e4da", borderwidth=1),
+                margin=dict(l=20, r=20, t=20, b=20),
+                height=340
+            )
             st.plotly_chart(fig_imp, use_container_width=True, config={"displayModeBar": False})
