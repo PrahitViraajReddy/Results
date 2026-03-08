@@ -1,0 +1,8 @@
+git pull origin master
+git rm --cached logs.csv
+git rm --cached results.csv
+git rm --cached halltickets.txt
+git rm --cached res.py
+git add .
+git commit -m "Remove sensitive files"
+git push origin master
