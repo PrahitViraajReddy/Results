@@ -21,20 +21,44 @@ def load_data():
 df = load_data()
 
 # ── Activity Logger ───────────────────────────────────────────────────────────
-import os
 from datetime import datetime
+import gspread
+from google.oauth2.service_account import Credentials
+
+SHEET_ID = "1yDTFJ6g0HhC7vA1PT1cfab1VwET467eu0xPW7TGmUQ4"
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+
+CREDENTIALS = {
+    "type": os.environ["GOOGLE_TYPE"],
+    "project_id": os.environ["GOOGLE_PROJECT_ID"],
+    "private_key": os.environ["GOOGLE_PRIVATE_KEY"],
+    "client_email": os.environ["GOOGLE_CLIENT_EMAIL"],
+    ...
+}
+@st.cache_resource
+def get_sheet():
+    try:
+        creds = Credentials.from_service_account_info(CREDENTIALS, scopes=SCOPES)
+        client = gspread.authorize(creds)
+        return client.open_by_key(SHEET_ID).sheet1
+    except Exception as e:
+        print(f"❌ Google Sheets Error: {e}")
+        return None
 
 def log_activity(hall_ticket, page):
     try:
-        log_file = "logs.csv"
+        sheet = get_sheet()
+        if sheet is None:
+            return
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        new_row = pd.DataFrame([{"hall_ticket": hall_ticket.upper(), "page": page, "timestamp": timestamp}])
-        if os.path.exists(log_file):
-            new_row.to_csv(log_file, mode="a", header=False, index=False)
-        else:
-            new_row.to_csv(log_file, mode="w", header=True, index=False)
-    except PermissionError:
-        pass
+        sheet.append_row([hall_ticket.upper(), page, timestamp])
+        print(f"✅ Logged: {hall_ticket} | {page} | {timestamp}")
+    except Exception as e:
+        print(f"❌ Logging Error: {e}")
 
 # ── Global CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
