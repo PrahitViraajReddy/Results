@@ -86,7 +86,7 @@ Your `results.csv` should have these columns:
 - [Plotly](https://plotly.com/) — Interactive charts
 
 ---
-
+Live App: https://academic-results.onrender.com/
 ## 📬 Contact
 
 Made by **Prahit Viraaj Reddy**  
