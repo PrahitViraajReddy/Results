@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import os
 import io
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -165,51 +164,6 @@ def generate_result_pdf(name, roll_number, branch, all_semesters, attempted_seme
     doc.build(elements)
     buf.seek(0)
     return buf
-
-# ── Activity Logger ───────────────────────────────────────────────────────────
-from datetime import datetime
-import gspread
-from google.oauth2.service_account import Credentials
-
-SHEET_ID = "1yDTFJ6g0HhC7vA1PT1cfab1VwET467eu0xPW7TGmUQ4"
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
-
-CREDENTIALS = {
-    "type": "service_account",
-    "project_id": os.environ.get("GOOGLE_PROJECT_ID", ""),
-    "private_key_id": os.environ.get("GOOGLE_PRIVATE_KEY_ID", ""),
-    "private_key": os.environ.get("GOOGLE_PRIVATE_KEY", "").replace("\\n", "\n"),
-    "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL", ""),
-    "client_id": os.environ.get("GOOGLE_CLIENT_ID", ""),
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": os.environ.get("GOOGLE_CLIENT_X509_CERT_URL", "")
-}
-
-@st.cache_resource
-def get_sheet():
-    try:
-        creds = Credentials.from_service_account_info(CREDENTIALS, scopes=SCOPES)
-        client = gspread.authorize(creds)
-        return client.open_by_key(SHEET_ID).sheet1
-    except Exception as e:
-        print(f"❌ Google Sheets Error: {e}")
-        return None
-
-def log_activity(hall_ticket, page):
-    try:
-        sheet = get_sheet()
-        if sheet is None:
-            return
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([hall_ticket.upper(), page, timestamp])
-        print(f"✅ Logged: {hall_ticket} | {page} | {timestamp}")
-    except Exception as e:
-        print(f"❌ Logging Error: {e}")
 
 # ── Global CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -535,7 +489,6 @@ elif st.session_state.page == "Results":
             if student_data.empty:
                 st.error("❌ No record found for this Hall Ticket Number")
             else:
-                log_activity(hall_ticket, "Results")
                 # Student information
                 name = student_data["name"].iloc[0]
                 branch = student_data["branch"].iloc[0]
@@ -676,7 +629,6 @@ elif st.session_state.page == "Insights":
         if student.empty:
             st.error("Student Not Found")
             st.stop()
-        log_activity(ht, "Insights")
 
         # ── Subject Performance ──────────────────────────────────────────
         st.subheader("📊 Subject Performance")
@@ -793,7 +745,6 @@ elif st.session_state.page == "Comparison":
                 st.error(f"❌  {e}")
         else:
             grades_map = {'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6, 'C': 5, 'P': 4, 'F': 0, 'Ab': 0}
-            log_activity(ht1 + " vs " + ht2, "Comparison")
 
             name1 = d1["name"].iloc[0]
             name2 = d2["name"].iloc[0]
