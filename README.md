@@ -4,7 +4,7 @@ A clean and modern Streamlit web app to view, analyze, and compare student acade
 
 ## 🌐 Live Demo
 
-https://academic-results.onrender.com/
+[https://academic-results.streamlit.app/](https://academic-results.streamlit.app/)
 
 ## 📸 Screenshots
 
@@ -120,12 +120,9 @@ Results App is an academic analytics portal that enables students to access thei
 
 **Made by:** Prahit Viraaj Reddy
 
-
 - GitHub: [https://github.com/PrahitViraajReddy](https://github.com/PrahitViraajReddy)
-- Live App: [https://academic-results.onrender.com/](https://academic-results.onrender.com/)
+- Live App: [https://academic-results.streamlit.app/](https://academic-results.streamlit.app/)
 
 ## ⚠️ Disclaimer
 
-This project is intended for educational and personal use.
-
-
+This project is intended for educational and personal use. 
