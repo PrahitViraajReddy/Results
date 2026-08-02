@@ -1,6 +1,6 @@
 # 🎓 Results App
 
-A clean and modern Streamlit web app to view, analyze, and compare student academic results.
+Results App is an academic analytics portal built with Python and Streamlit. It enables students to view semester-wise academic results, calculate SGPA/CGPA, analyze subject performance, compare results side by side, and export detailed PDF reports through an interactive dashboard.
 
 ## 🌐 Live Demo
 
@@ -120,7 +120,7 @@ Results App is an academic analytics portal that enables students to access thei
 
 **Made by:** Prahit Viraaj Reddy
 
-- GitHub: [https://github.com/PrahitViraajReddy](https://github.com/PrahitViraajReddy)
+- - GitHub: **@PrahitViraajReddy**
 - Live App: [https://academic-results.streamlit.app/](https://academic-results.streamlit.app/)
 
 ## ⚠️ Disclaimer
