@@ -128,6 +128,4 @@ Results App is an academic analytics portal that enables students to access thei
 
 This project is intended for educational and personal use.
 
-## 📄 License
 
-This project is licensed under the MIT License.
