@@ -25,6 +25,7 @@ if "page" not in st.session_state: st.session_state.page = "Home"
 @st.cache_data
 def load_data():
     xl = pd.ExcelFile("results.xlsx")
+    grade_points = {"O": 10, "A+": 9, "A": 8, "B+": 7, "B": 6, "C": 5, "P": 4, "F": 0, "AB": 0}
     sem_sheets = [s for s in xl.sheet_names if s != "Summary"]
 
     summary = xl.parse("Summary")
@@ -32,6 +33,7 @@ def load_data():
     branch_map = dict(zip(summary["RollNumber"], summary["Branch"]))
 
     rows = []
+    semester_metrics = {}
     for sheet in sem_sheets:
         semester = sheet.replace("Sem ", "").strip()
         raw = xl.parse(sheet, header=None)
@@ -69,7 +71,25 @@ def load_data():
             rows.append(sub)
             col += 7
 
-    return pd.concat(rows, ignore_index=True)
+        # Preserve semester-level metrics from the workbook when available.
+        metric_start = col
+        if metric_start < ncols:
+            for metric_col in range(metric_start, ncols):
+                metric_name = str(header1[metric_col]).strip().lower()
+                if metric_name in {"sgpa", "sem credits", "semester credits", "credits", "sem backlogs", "backlogs"}:
+                    values = pd.to_numeric(data[metric_col], errors="coerce")
+                    for idx, value in values.items():
+                        roll = str(data.iloc[idx, 0]).strip().upper()
+                        if roll and pd.notna(value):
+                            semester_metrics[(roll, semester, metric_name)] = value
+
+    result = pd.concat(rows, ignore_index=True)
+    result.attrs["semester_metrics"] = semester_metrics
+    return result
+
+    result = pd.concat(rows, ignore_index=True)
+    result.attrs["semester_metrics"] = semester_metrics
+    return result
 
 df = load_data()
 
