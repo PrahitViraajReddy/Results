@@ -89,6 +89,39 @@ def load_data():
 
 df = load_data()
 
+# ── Academic Metric Helpers ───────────────────────────────────────────────────
+
+def get_workbook_sgpa(roll_number, semester, semester_metrics):
+    roll = str(roll_number).strip().upper()
+    value = semester_metrics.get((roll, str(semester), "sgpa"))
+    return float(value) if pd.notna(value) else None
+
+
+def get_student_cgpa(student_data, semester_metrics, grades_map):
+    roll = str(student_data["rollNumber"].iloc[0]).strip().upper()
+    semester_rows = []
+
+    for sem in sorted(student_data["semester"].unique()):
+        sgpa = get_workbook_sgpa(roll, sem, semester_metrics)
+        sem_credits = semester_metrics.get((roll, str(sem), "sem credits"))
+        if sgpa is None or pd.isna(sem_credits):
+            continue
+        semester_rows.append((sgpa, float(sem_credits)))
+
+    if semester_rows:
+        weighted = sum(sgpa * credits for sgpa, credits in semester_rows)
+        credits = sum(credits for _, credits in semester_rows)
+        if credits > 0 and len(semester_rows) == len(student_data["semester"].unique()):
+            return weighted / credits
+
+    # Fallback when workbook semester metrics are unavailable.
+    data = student_data.copy()
+    data["grade_point"] = data["grade"].str.strip().str.upper().map(grades_map)
+    if data["grade"].isin(["F", "AB"]).any() or data["credits"].sum() <= 0:
+        return None
+    return (data["grade_point"] * data["credits"]).sum() / data["credits"].sum()
+
+
 # ── PDF Export Helper ─────────────────────────────────────────────────────────
 
 def generate_result_pdf(name, roll_number, branch, all_semesters, attempted_semesters,
@@ -531,9 +564,10 @@ elif st.session_state.page == "Results":
                     "credits"
                 ]
 
-                grades_map = {'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6, 'C': 5, 'F': 0, 'Ab': 0}
+                grades_map = {'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6, 'C': 5, 'P': 4, 'F': 0, 'AB': 0}
+                semester_metrics = df.attrs.get("semester_metrics", {})
 
-                # Track per-semester SGPA for CGPA calculation
+                # Track authoritative workbook SGPA/credits for CGPA calculation.
                 semester_sgpa_data = []
 
                 # Semester-wise results
@@ -550,24 +584,41 @@ elif st.session_state.page == "Results":
                         ].reset_index(drop=True)
                         st.table(sem_df[columns])
                         sem_df = student_data[student_data["semester"] == sem].copy()
-                        is_pass = all(sem_df["grade"] != 'F') and all(sem_df["grade"] != 'Ab')
-                        sem_df['grade_point'] = sem_df['grade'].map(grades_map)
-                        total_credits = sem_df['credits'].sum()
+                        sem_df["grade"] = sem_df["grade"].str.strip().str.upper()
+                        is_pass = sem_df["grade"].isin(["O", "A+", "A", "B+", "B", "C", "P"]).all()
+                        total_credits = semester_metrics.get(
+                            (hall_ticket.strip().upper(), str(sem), "sem credits")
+                        )
+                        if pd.isna(total_credits):
+                            total_credits = sem_df["credits"].sum()
 
-                        if is_pass:
-                            sgpa = (sem_df['grade_point'] * sem_df['credits']).sum() / total_credits
+                        workbook_sgpa = get_workbook_sgpa(
+                            hall_ticket.strip().upper(), sem, semester_metrics
+                        )
+
+                        if workbook_sgpa is not None:
+                            st.success(f"🎯 **Semester {sem} SGPA: {workbook_sgpa:.2f}**")
+                            semester_sgpa_data.append({
+                                "sem": sem,
+                                "sgpa": workbook_sgpa,
+                                "credits": float(total_credits),
+                                "passed": is_pass
+                            })
+                        elif is_pass and total_credits > 0:
+                            sem_df["grade_point"] = sem_df["grade"].map(grades_map)
+                            sgpa = (sem_df["grade_point"] * sem_df["credits"]).sum() / total_credits
                             st.success(f"🎯 **Semester {sem} SGPA: {sgpa:.2f}**")
                             semester_sgpa_data.append({
                                 "sem": sem,
                                 "sgpa": sgpa,
-                                "credits": total_credits,
+                                "credits": float(total_credits),
                                 "passed": True
                             })
                         else:
                             semester_sgpa_data.append({
                                 "sem": sem,
                                 "sgpa": None,
-                                "credits": total_credits,
+                                "credits": float(total_credits),
                                 "passed": False
                             })
 
@@ -794,14 +845,9 @@ elif st.session_state.page == "Comparison":
             with c1:
                 total1 = d1["total"].sum()
                 credits1 = d1["credits"].sum()
-                d1c = d1.copy()
-                d1c["gp"] = d1c["grade"].str.strip().map(grades_map)
-                passed1 = d1["grade"].isin(["O","A+","A","B+","B","C","P"]).all()
-                if passed1:
-                    cgpa1 = (d1c["gp"] * d1c["credits"]).sum() / d1c["credits"].sum()
-                    cgpa1_str = f"{cgpa1:.2f}"
-                else:
-                    cgpa1_str = "—"
+                passed1 = d1["grade"].str.strip().str.upper().isin(["O","A+","A","B+","B","C","P"]).all()
+                cgpa1 = get_student_cgpa(d1, df.attrs.get("semester_metrics", {}), grades_map) if passed1 else None
+                cgpa1_str = f"{cgpa1:.2f}" if cgpa1 is not None else "—"
                 st.markdown(f"""
                 <div class="card">
                     <div class="card-label">👤 Student 1</div>
@@ -826,14 +872,9 @@ elif st.session_state.page == "Comparison":
             with c2:
                 total2 = d2["total"].sum()
                 credits2 = d2["credits"].sum()
-                d2c = d2.copy()
-                d2c["gp"] = d2c["grade"].str.strip().map(grades_map)
-                passed2 = d2["grade"].isin(["O","A+","A","B+","B","C","P"]).all()
-                if passed2:
-                    cgpa2 = (d2c["gp"] * d2c["credits"]).sum() / d2c["credits"].sum()
-                    cgpa2_str = f"{cgpa2:.2f}"
-                else:
-                    cgpa2_str = "—"
+                passed2 = d2["grade"].str.strip().str.upper().isin(["O","A+","A","B+","B","C","P"]).all()
+                cgpa2 = get_student_cgpa(d2, df.attrs.get("semester_metrics", {}), grades_map) if passed2 else None
+                cgpa2_str = f"{cgpa2:.2f}" if cgpa2 is not None else "—"
                 st.markdown(f"""
                 <div class="card">
                     <div class="card-label">👤 Student 2</div>
@@ -912,7 +953,7 @@ elif st.session_state.page == "Comparison":
             avg1 = d1["total"].mean()
             avg2 = d2["total"].mean()
             avg_gap = abs(avg1 - avg2)
-            cgpa_gap = abs(cgpa1 - cgpa2) if passed1 and passed2 else None
+            cgpa_gap = abs(cgpa1 - cgpa2) if cgpa1 is not None and cgpa2 is not None else None
             common_subject_count = len(set(d1["subjectName"]) & set(d2["subjectName"]))
 
             summary_cols = st.columns(4)
