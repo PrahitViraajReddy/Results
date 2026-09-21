@@ -1,12 +1,43 @@
 # 🎓 Results App
 
-Results App is an academic analytics portal built with Python and Streamlit. It enables students to view semester-wise academic results, calculate SGPA/CGPA, analyze subject performance, compare results side by side, and export detailed PDF reports through an interactive dashboard.
+**Results App** is an academic performance analytics portal built with **Python, Pandas, OpenPyXL, Streamlit, Plotly, and ReportLab**.
+
+The application converts semester-wise Excel result data into an interactive analytics interface where users can retrieve results, calculate SGPA/CGPA, explore subject performance, compare academic trends, and export PDF reports.
 
 ## 🌐 Live Demo
 
-[https://academic-results.streamlit.app/](https://academic-results.streamlit.app/)
+[Open the deployed Results App](https://academic-results.streamlit.app/)
 
-## 📸 Screenshots
+## 📊 What This Project Demonstrates
+
+This project focuses on a practical analytics workflow:
+
+**Excel Data → Data Parsing → Data Transformation → Academic Metrics → EDA/Insights → Interactive Visualization → PDF Reporting**
+
+It demonstrates skills relevant to **Data Analyst / BI / Reporting** roles:
+
+- Excel-based data handling
+- Pandas data transformation
+- Data cleaning and reshaping
+- KPI and metric calculation
+- Trend analysis
+- Comparative analysis
+- Interactive dashboard development
+- Automated report generation
+
+## ✨ Key Features
+
+- 📋 Semester-wise result lookup
+- 🎓 SGPA and CGPA calculation
+- 📊 Subject-level performance analysis
+- 📈 Semester-wise SGPA progression
+- 🏆 Best and weak subject identification
+- ⚖️ Side-by-side student comparison
+- 📉 Comparative performance trends
+- 📄 PDF result report generation
+- 📱 Responsive Streamlit interface
+
+## 📸 Application Screens
 
 ### 🏠 Home
 ![Home](images/home.png)
@@ -17,52 +48,69 @@ Results App is an academic analytics portal built with Python and Streamlit. It 
 ### 💡 Insights
 ![Insights](images/insights.png)
 
-### 📄 Export PDF
-![Export PDF](images/export_pdf.png)
+### 📄 PDF Export
+![PDF Export](images/export_pdf.png)
 
-### ⚖️ Comparison
+### ⚖️ Student Comparison
 ![Comparison](images/comparison.png)
 
-## ✨ Features
+## 🧮 Analytics Logic
 
-- 📋 View semester-wise academic results
-- 🎓 Automatic SGPA & CGPA calculation
-- 📊 Subject performance visualization
-- 📈 SGPA progression across semesters
-- 🏆 Best & weakest subject analysis
-- ⚖️ Compare two students side by side
-- 📄 Export academic report as PDF
-- 🎨 Clean and responsive Streamlit interface
+### SGPA
 
-## 🚀 Getting Started
+SGPA is calculated using the weighted grade-point formula:
 
-### 1. Clone the repo
-```bash
-git clone https://github.com/PrahitViraajReddy/Results.git
-cd Results
-```
+**SGPA = Σ(Grade Point × Credits) / Σ(Credits)**
 
-### 2. Install dependencies
-```bash
-pip install -r requirements.txt
-```
+The application treats a semester as eligible for SGPA calculation only when there is no `F` or `Ab` grade.
 
-### 3. Add your data
-Place your `results.xlsx` file in the project folder.
+### CGPA
 
-### 4. Run the app
-```bash
-streamlit run ui.py
-```
+CGPA is calculated from semester performance using credit-weighted SGPA values:
+
+**CGPA = Σ(Semester SGPA × Semester Credits) / Σ(Total Credits)**
+
+If required semester results are unavailable or contain unresolved backlogs, the application displays the corresponding status rather than silently treating the data as complete.
+
+## 📊 Excel Data Model
+
+The application expects an Excel workbook containing:
+
+- A `Summary` sheet for student-level metadata
+- One sheet per semester
+- Subject-level columns containing:
+  - Subject Code
+  - Subject Name
+  - Internal Marks
+  - External Marks
+  - Total Marks
+  - Grade
+  - Credits
+
+The application transforms the wide semester-sheet structure into a long-format Pandas dataset for analysis and visualization.
+
+## 🛠️ Tech Stack
+
+| Technology | Purpose |
+|---|---|
+| **Python** | Application logic and analytics |
+| **Pandas** | Data processing and transformation |
+| **OpenPyXL** | Excel workbook parsing |
+| **Streamlit** | Interactive web application |
+| **Plotly** | Interactive performance charts |
+| **ReportLab** | PDF report generation |
 
 ## 📁 Project Structure
 
 ```text
 Results/
-├── ui.py                  # Main Streamlit app
-├── results.xlsx           # Student results data
-├── requirements.txt       # Python dependencies
-├── README.md               # Project documentation
+├── ui.py
+├── results.xlsx
+├── requirements.txt
+├── README.md
+├── .gitignore
+├── .devcontainer/
+│   └── devcontainer.json
 └── images/
     ├── home.png
     ├── results.png
@@ -71,58 +119,56 @@ Results/
     └── comparison.png
 ```
 
-## 📊 Excel Format
+## 🚀 Run Locally
 
-Your `results.xlsx` should contain one sheet per semester (e.g. `Sem 1-1`, `Sem 1-2`, ...) plus a `Summary` sheet. Each semester sheet has one block of columns per subject:
+### 1. Clone the repository
 
-| Column | Description |
-|---|---|
-| Code | Subject Code |
-| Subject Name | Subject Name |
-| Int. | Internal Marks |
-| Ext. | External Marks |
-| Total | Total Marks |
-| Grade | Grade (O, A+, A, B+, B, C, F, Ab) |
-| Cr. | Subject Credits |
+```bash
+git clone https://github.com/PrahitViraajReddy/Results.git
+cd Results
+```
 
-The `Summary` sheet holds `RollNumber`, `Name`, and `Branch` for every student, used to resolve student details across all semesters.
+### 2. Install dependencies
 
-## 🧮 SGPA & CGPA Formula
+```bash
+pip install -r requirements.txt
+```
 
-- **SGPA** = Σ(Grade Point × Credits) ÷ Σ(Credits) — per semester
-- **CGPA** = Σ(Semester SGPA × Semester Credits) ÷ Σ(Total Credits) — all semesters
+### 3. Provide the Excel workbook
 
-SGPA is only calculated if the student has passed all subjects in that semester (no F or Ab grades). CGPA is only calculated if all semesters are passed. If a student has no record for a semester, it's shown as **"Not Applied for Exams"** instead of being skipped silently.
+Place a compatible `results.xlsx` file in the project root.
 
-## 🛠️ Tech Stack
+### 4. Start Streamlit
 
-- **Python**
-- **Streamlit** — web framework
-- **Pandas** — data processing
-- **OpenPyXL** — Excel file parsing
-- **Plotly** — interactive charts
-- **ReportLab** — PDF report generation
+```bash
+streamlit run ui.py
+```
 
-## 📖 About
+## 🔐 Data Privacy
 
-Results App is an academic analytics portal that enables students to access their academic performance, calculate SGPA/CGPA, visualize subject-wise trends, compare results, and export reports through an interactive dashboard.
+The application processes student-level academic records, so **public deployments should use synthetic, anonymized, or otherwise appropriately authorized data**.
 
-## 🚀 Future Improvements
+Before publishing a workbook containing real student records, remove or anonymize personally identifying information and confirm that the data is appropriate for public use.
 
-- User authentication
-- Admin dashboard
-- Batch result analysis
-- Branch-wise analytics
-- Database integration
-- Rank prediction
+## 🔮 Future Improvements
 
-## 📬 Contact
+Potential extensions include:
 
-**Made by:** Prahit Viraaj Reddy
+- Authentication and role-based access
+- Admin analytics dashboard
+- Batch-level performance analytics
+- Branch-wise performance analysis
+- Database-backed data storage
+- Automated data validation
+- Additional KPI and reporting views
 
-- - GitHub: **@PrahitViraajReddy**
-- Live App: [https://academic-results.streamlit.app/](https://academic-results.streamlit.app/)
+## 👤 Author
+
+**Prahit Viraaj Reddy**
+
+- GitHub: [@PrahitViraajReddy](https://github.com/PrahitViraajReddy)
+- Live App: [academic-results.streamlit.app](https://academic-results.streamlit.app/)
 
 ## ⚠️ Disclaimer
 
-This project is intended for educational and personal use. 
+This project is intended as an educational and portfolio project. Results and analytics are dependent on the quality and completeness of the supplied Excel data.
