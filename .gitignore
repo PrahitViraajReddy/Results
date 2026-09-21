@@ -1,8 +1,21 @@
-git pull origin master
-git rm --cached logs.csv
-git rm --cached results.csv
-git rm --cached halltickets.txt
-git rm --cached res.py
-git add .
-git commit -m "Remove sensitive files"
-git push origin master
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Local data / generated files
+logs.csv
+results.csv
+halltickets.txt
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Local secrets / environment files
+.env
+.env.*
