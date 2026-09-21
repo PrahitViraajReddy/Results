@@ -177,8 +177,8 @@ def generate_result_pdf(name, roll_number, branch, all_semesters, attempted_seme
                 elements.append(Spacer(1, 4))
                 elements.append(Paragraph(f"<b>Semester {sem} SGPA: {sgpa:.2f}</b>", info_style))
             else:
-            elements.append(Spacer(1, 4))
-            elements.append(Paragraph(f"<b>Semester {sem}: Backlog(s) present</b>", note_style))
+                elements.append(Spacer(1, 4))
+                elements.append(Paragraph(f"<b>Semester {sem}: Backlog(s) present</b>", note_style))
 
         elements.append(Spacer(1, 8))
 
