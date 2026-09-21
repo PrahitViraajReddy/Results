@@ -28,6 +28,7 @@ def load_data():
     sem_sheets = [s for s in xl.sheet_names if s != "Summary"]
 
     summary = xl.parse("Summary")
+    summary["RollNumber"] = summary["RollNumber"].astype(str).str.strip().str.upper()
     branch_map = dict(zip(summary["RollNumber"], summary["Branch"]))
 
     rows = []
@@ -59,9 +60,10 @@ def load_data():
                 "internal": pd.to_numeric(data[int_col], errors="coerce"),
                 "external": pd.to_numeric(data[ext_col], errors="coerce"),
                 "total": pd.to_numeric(data[total_col], errors="coerce"),
-                "grade": data[grade_col],
+                "grade": data[grade_col].astype(str).str.strip().str.upper(),
                 "credits": pd.to_numeric(data[cr_col], errors="coerce"),
             })
+            sub["rollNumber"] = sub["rollNumber"].astype(str).str.strip().str.upper()
             sub["branch"] = sub["rollNumber"].map(branch_map)
             sub = sub.dropna(subset=["total"])
             rows.append(sub)
@@ -145,7 +147,7 @@ def generate_result_pdf(name, roll_number, branch, all_semesters, attempted_seme
         elements.append(t)
 
         sem_calc = sem_df.copy()
-        is_pass = all(sem_calc["grade"] != "F") and all(sem_calc["grade"] != "Ab")
+        is_pass = sem_calc["grade"].isin(["O","A+","A","B+","B","C","P"]).all()
         sem_calc["grade_point"] = sem_calc["grade"].map(grades_map)
         total_credits = sem_calc["credits"].sum()
         if is_pass and total_credits > 0:
@@ -707,8 +709,6 @@ elif st.session_state.page == "Insights":
 # ══════════════════════════════════════════════════════════════════════════════
 elif st.session_state.page == "Comparison":
     import plotly.graph_objects as go
-    import plotly.express as px
-
     st.markdown('<div class="page-title">⚖️ Compare Results</div>', unsafe_allow_html=True)
     st.markdown('<div class="page-sub">Enter two Hall Ticket Numbers to compare academic performance side by side</div>', unsafe_allow_html=True)
 
@@ -744,7 +744,7 @@ elif st.session_state.page == "Comparison":
             for e in errors:
                 st.error(f"❌  {e}")
         else:
-            grades_map = {'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6, 'C': 5, 'P': 4, 'F': 0, 'Ab': 0}
+            grades_map = {'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6, 'C': 5, 'P': 4, 'F': 0, 'AB': 0}
 
             name1 = d1["name"].iloc[0]
             name2 = d2["name"].iloc[0]
@@ -758,7 +758,7 @@ elif st.session_state.page == "Comparison":
                 credits1 = d1["credits"].sum()
                 d1c = d1.copy()
                 d1c["gp"] = d1c["grade"].str.strip().map(grades_map)
-                passed1 = all(d1["grade"].isin(["O","A+","A","B+","B","C","P"]))
+                passed1 = d1["grade"].isin(["O","A+","A","B+","B","C","P"]).all()
                 if passed1:
                     cgpa1 = (d1c["gp"] * d1c["credits"]).sum() / d1c["credits"].sum()
                     cgpa1_str = f"{cgpa1:.2f}"
@@ -790,7 +790,7 @@ elif st.session_state.page == "Comparison":
                 credits2 = d2["credits"].sum()
                 d2c = d2.copy()
                 d2c["gp"] = d2c["grade"].str.strip().map(grades_map)
-                passed2 = all(d2["grade"].isin(["O","A+","A","B+","B","C","P"]))
+                passed2 = d2["grade"].isin(["O","A+","A","B+","B","C","P"]).all()
                 if passed2:
                     cgpa2 = (d2c["gp"] * d2c["credits"]).sum() / d2c["credits"].sum()
                     cgpa2_str = f"{cgpa2:.2f}"
@@ -827,7 +827,7 @@ elif st.session_state.page == "Comparison":
                 for sem in sorted(data["semester"].unique()):
                     s = data[data["semester"] == sem].copy()
                     s["gp"] = s["grade"].str.strip().map(grades_map)
-                    is_pass = all(s["grade"].str.strip().isin(["O","A+","A","B+","B","C","P"]))
+                    is_pass = s["grade"].str.strip().isin(["O","A+","A","B+","B","C","P"]).all()
                     if is_pass:
                         sgpa = (s["gp"] * s["credits"]).sum() / s["credits"].sum()
                         result.append({"Semester": str(sem), "SGPA": round(sgpa, 2)})
