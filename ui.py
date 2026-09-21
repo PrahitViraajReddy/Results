@@ -868,41 +868,60 @@ elif st.session_state.page == "Comparison":
             )
             st.plotly_chart(fig_sgpa, use_container_width=True, config={"displayModeBar": False})
 
-            # ── Winner Card ───────────────────────────────────────────────
-            st.markdown('<div class="sec-label">🏆 Overall Winner</div>', unsafe_allow_html=True)
+            # ── Comparison Summary ─────────────────────────────────────
+            st.markdown('<div class="sec-label">📊 Comparison Summary</div>', unsafe_allow_html=True)
 
             avg1 = d1["total"].mean()
             avg2 = d2["total"].mean()
-            if avg1 > avg2:
-                winner, loser, w_avg, l_avg = name1, name2, avg1, avg2
-                winner_color = "#2e7d32"; winner_bg = "#e8f5e9"
-            elif avg2 > avg1:
-                winner, loser, w_avg, l_avg = name2, name1, avg2, avg1
-                winner_color = "#2e7d32"; winner_bg = "#e8f5e9"
-            else:
-                winner = None
+            avg_gap = abs(avg1 - avg2)
+            cgpa_gap = abs(cgpa1 - cgpa2) if passed1 and passed2 else None
+            common_subject_count = len(set(d1["subjectName"]) & set(d2["subjectName"]))
 
-            if winner:
+            summary_cols = st.columns(4)
+            with summary_cols[0]:
                 st.markdown(f"""
-                <div class="card" style="border-left: 5px solid #2e7d32; background:{winner_bg};">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <div>
-                            <div class="card-label">🏆 Leading Student</div>
-                            <div class="card-value" style="color:#2e7d32;">{winner}</div>
-                            <div class="card-sub">Avg Marks: {w_avg:.1f} &nbsp;|&nbsp; {loser}: {l_avg:.1f}</div>
-                        </div>
-                        <div style="font-size:3rem;">🥇</div>
-                    </div>
+                <div class="card">
+                    <div class="card-label">Average Marks</div>
+                    <div class="card-value">{avg1:.1f}</div>
+                    <div class="card-sub">{name1}</div>
                 </div>
                 """, unsafe_allow_html=True)
-            else:
+            with summary_cols[1]:
                 st.markdown(f"""
-                <div class="card" style="border-left:5px solid #c8a84b;">
-                    <div class="card-label">⚖️ It's a Tie!</div>
-                    <div class="card-value">Both students are equal</div>
-                    <div class="card-sub">Avg Marks: {avg1:.1f}</div>
+                <div class="card">
+                    <div class="card-label">Average Marks</div>
+                    <div class="card-value">{avg2:.1f}</div>
+                    <div class="card-sub">{name2}</div>
                 </div>
                 """, unsafe_allow_html=True)
+            with summary_cols[2]:
+                cgpa_text = f"{cgpa_gap:.2f}" if cgpa_gap is not None else "—"
+                st.markdown(f"""
+                <div class="card">
+                    <div class="card-label">CGPA Difference</div>
+                    <div class="card-value">{cgpa_text}</div>
+                    <div class="card-sub">Absolute difference</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with summary_cols[3]:
+                st.markdown(f"""
+                <div class="card">
+                    <div class="card-label">Common Subjects</div>
+                    <div class="card-value">{common_subject_count}</div>
+                    <div class="card-sub">Subjects available for comparison</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown(f"""
+            <div class="card" style="background:#ffffff;">
+                <div class="card-label">Mark Difference</div>
+                <div class="card-value">{avg_gap:.1f}</div>
+                <div class="card-sub">
+                    Absolute difference between the two students' overall average marks.
+                    This is shown as a descriptive metric, not as an overall ranking.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
             st.markdown("<br>", unsafe_allow_html=True)
 
