@@ -92,7 +92,7 @@ df = load_data()
 # ── PDF Export Helper ─────────────────────────────────────────────────────────
 
 def generate_result_pdf(name, roll_number, branch, all_semesters, attempted_semesters,
-                         student_data, columns, grades_map, cgpa_display, cgpa_sub):
+                         student_data, columns, grades_map, cgpa_display, cgpa_sub, semester_metrics=None):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
@@ -164,13 +164,19 @@ def generate_result_pdf(name, roll_number, branch, all_semesters, attempted_seme
 
         sem_calc = sem_df.copy()
         is_pass = sem_calc["grade"].isin(["O","A+","A","B+","B","C","P"]).all()
-        sem_calc["grade_point"] = sem_calc["grade"].map(grades_map)
-        total_credits = sem_calc["credits"].sum()
-        if is_pass and total_credits > 0:
-            sgpa = (sem_calc["grade_point"] * sem_calc["credits"]).sum() / total_credits
+        roll_key = str(roll_number).strip().upper()
+        workbook_sgpa = None if semester_metrics is None else semester_metrics.get((roll_key, str(sem), "sgpa"))
+        if pd.notna(workbook_sgpa):
             elements.append(Spacer(1, 4))
-            elements.append(Paragraph(f"<b>Semester {sem} SGPA: {sgpa:.2f}</b>", info_style))
+            elements.append(Paragraph(f"<b>Semester {sem} SGPA: {float(workbook_sgpa):.2f}</b>", info_style))
         else:
+            sem_calc["grade_point"] = sem_calc["grade"].map(grades_map)
+            total_credits = sem_calc["credits"].sum()
+            if is_pass and total_credits > 0:
+                sgpa = (sem_calc["grade_point"] * sem_calc["credits"]).sum() / total_credits
+                elements.append(Spacer(1, 4))
+                elements.append(Paragraph(f"<b>Semester {sem} SGPA: {sgpa:.2f}</b>", info_style))
+            else:
             elements.append(Spacer(1, 4))
             elements.append(Paragraph(f"<b>Semester {sem}: Backlog(s) present</b>", note_style))
 
@@ -612,6 +618,7 @@ elif st.session_state.page == "Results":
                     grades_map=grades_map,
                     cgpa_display=cgpa_display,
                     cgpa_sub=cgpa_sub,
+                    semester_metrics=df.attrs.get("semester_metrics", {}),
                 )
                 st.download_button(
                     label="📄 Export as PDF",
@@ -657,43 +664,58 @@ elif st.session_state.page == "Insights":
             .sort_values(ascending=False)
         )
 
-        fig1 = px.line(
-            x=subject_scores.index,
-            y=subject_scores.values,
-            markers=True,
-            labels={"x": "Subject", "y": "Marks"},
-            height=450
+        subject_plot = subject_scores.sort_values(ascending=True).reset_index()
+        subject_plot.columns = ["Subject", "Marks"]
+        fig1 = px.bar(
+            subject_plot,
+            x="Marks",
+            y="Subject",
+            orientation="h",
+            labels={"Subject": "Subject", "Marks": "Marks"},
+            height=max(420, min(720, 60 * len(subject_plot)))
         )
-        fig1.update_xaxes(showticklabels=False)
-        fig1.update_layout(dragmode=False)
-        fig1.update_traces(
-            hovertemplate="<b>%{x}</b><br>Marks: %{y}<extra></extra>"
+        fig1.update_layout(
+            dragmode=False,
+            yaxis={"categoryorder": "array", "categoryarray": subject_plot["Subject"].tolist()},
+            margin=dict(l=20, r=20, t=20, b=20)
         )
+        fig1.update_traces(hovertemplate="<b>%{y}</b><br>Marks: %{x:.0f}<extra></extra>")
         st.plotly_chart(fig1, use_container_width=True, config={"displayModeBar": False})
 
         # ── SGPA Progression ─────────────────────────────────────────────
-        student["grade_point"] = student["grade"].str.strip().map(grades_map)
-
-        sgpa_sem = (
-            student.groupby("semester")
-            .apply(lambda x: (x["grade_point"] * x["credits"]).sum() / x["credits"].sum())
-        )
+        semester_metrics = df.attrs.get("semester_metrics", {})
+        student_roll = str(student["rollNumber"].iloc[0]).strip().upper()
+        sgpa_rows = []
+        for sem in sorted(student["semester"].unique()):
+            value = semester_metrics.get((student_roll, str(sem), "sgpa"))
+            if pd.notna(value):
+                sgpa_rows.append({"Semester": str(sem), "SGPA": float(value)})
+        sgpa_sem = pd.DataFrame(sgpa_rows)
 
         st.subheader("📈 SGPA Progression")
 
-        fig2 = px.line(
-            x=sgpa_sem.index,
-            y=sgpa_sem.values,
-            markers=True,
-            labels={"x": "Semester", "y": "SGPA"},
-            height=400
-        )
-        fig2.update_xaxes(showticklabels=False)
-        fig2.update_layout(dragmode=False)
-        fig2.update_traces(
-            hovertemplate="<b>%{x}</b><br>SGPA: %{y}<extra></extra>"
-        )
-        st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+        if not sgpa_sem.empty:
+            fig2 = px.line(
+                sgpa_sem,
+                x="Semester",
+                y="SGPA",
+                markers=True,
+                labels={"Semester": "Semester", "SGPA": "SGPA"},
+                height=400
+            )
+            fig2.update_layout(
+                dragmode=False,
+                yaxis=dict(range=[0, 10.5]),
+                margin=dict(l=20, r=20, t=20, b=20)
+            )
+            fig2.update_traces(
+                text=sgpa_sem["SGPA"].round(2),
+                textposition="top center",
+                hovertemplate="<b>%{x}</b><br>SGPA: %{y:.2f}<extra></extra>"
+            )
+            st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+        else:
+            st.info("SGPA trend is not available in the workbook for this student.")
 
         # ── Best & Weak Subjects ─────────────────────────────────────────
         st.subheader("🏆 Best & Weak Subjects")
@@ -840,7 +862,7 @@ elif st.session_state.page == "Comparison":
 
             semester_metrics = df.attrs.get("semester_metrics", {})
 
-                    def get_sgpa_trend(data):
+            def get_sgpa_trend(data):
                 result = []
                 for sem in sorted(data["semester"].unique()):
                     roll = str(data["rollNumber"].iloc[0]).strip().upper()
@@ -1026,38 +1048,36 @@ elif st.session_state.page == "Comparison":
                     </div>
                     """, unsafe_allow_html=True)
 
-            # ── Semester-wise Improvement ─────────────────────────────────
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown('<div class="sec-label">📈 Semester-wise Improvement</div>', unsafe_allow_html=True)
+            # ── Common Subject Comparison ────────────────────────────────
+            if common_subjects:
+                chart_data = merged.sort_values("avg", ascending=False).head(10).copy()
+                chart_data = chart_data.sort_values("avg", ascending=True)
 
-            def get_sem_avg(data):
-                return data.groupby("semester")["total"].mean().reset_index().rename(columns={"total": "avg"})
-
-            sem1 = get_sem_avg(d1)
-            sem2 = get_sem_avg(d2)
-
-            fig_imp = go.Figure()
-            fig_imp.add_trace(go.Scatter(
-                x=sem1["semester"].astype(str), y=sem1["avg"],
-                mode="lines+markers", name=name1,
-                line=dict(color="#c8a84b", width=3),
-                marker=dict(size=9, color="#c8a84b"),
-                hovertemplate="<b>%{x}</b><br>Avg: %{y:.1f}<extra></extra>"
-            ))
-            fig_imp.add_trace(go.Scatter(
-                x=sem2["semester"].astype(str), y=sem2["avg"],
-                mode="lines+markers", name=name2,
-                line=dict(color="#1a1a2e", width=3, dash="dot"),
-                marker=dict(size=9, color="#1a1a2e"),
-                hovertemplate="<b>%{x}</b><br>Avg: %{y:.1f}<extra></extra>"
-            ))
-            fig_imp.update_layout(
-                paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
-                font=dict(family="DM Sans", color="#1a1a2e"),
-                xaxis=dict(gridcolor="#e8e4da", title="Semester"),
-                yaxis=dict(gridcolor="#e8e4da", title="Avg Marks"),
-                legend=dict(bgcolor="#ffffff", bordercolor="#e8e4da", borderwidth=1),
-                margin=dict(l=20, r=20, t=20, b=20),
-                height=340
-            )
-            st.plotly_chart(fig_imp, use_container_width=True, config={"displayModeBar": False})
+                fig_subject = go.Figure()
+                fig_subject.add_trace(go.Bar(
+                    y=chart_data["subjectName"],
+                    x=chart_data[name1],
+                    name=name1,
+                    orientation="h"
+                ))
+                fig_subject.add_trace(go.Bar(
+                    y=chart_data["subjectName"],
+                    x=chart_data[name2],
+                    name=name2,
+                    orientation="h"
+                ))
+                fig_subject.update_layout(
+                    barmode="group",
+                    paper_bgcolor="#ffffff",
+                    plot_bgcolor="#f5f3ee",
+                    font=dict(family="DM Sans", color="#1a1a2e"),
+                    xaxis=dict(title="Marks", gridcolor="#e8e4da"),
+                    yaxis=dict(title="Common Subjects"),
+                    legend=dict(bgcolor="#ffffff", bordercolor="#e8e4da", borderwidth=1),
+                    margin=dict(l=20, r=20, t=20, b=20),
+                    height=max(360, 42 * len(chart_data))
+                )
+                fig_subject.update_traces(hovertemplate="<b>%{y}</b><br>Marks: %{x:.0f}<extra></extra>")
+                st.plotly_chart(fig_subject, use_container_width=True, config={"displayModeBar": False})
+            else:
+                st.info("No common subjects are available for visual comparison.")
