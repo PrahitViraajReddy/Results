@@ -87,10 +87,6 @@ def load_data():
     result.attrs["semester_metrics"] = semester_metrics
     return result
 
-    result = pd.concat(rows, ignore_index=True)
-    result.attrs["semester_metrics"] = semester_metrics
-    return result
-
 df = load_data()
 
 # ── PDF Export Helper ─────────────────────────────────────────────────────────
@@ -842,15 +838,19 @@ elif st.session_state.page == "Comparison":
             # ── SGPA Trend ────────────────────────────────────────────────
             st.markdown('<div class="sec-label">📈 SGPA Trend Comparison</div>', unsafe_allow_html=True)
 
+            semester_metrics = df.attrs.get("semester_metrics", {})
+
             def get_sgpa_trend(data):
                 result = []
+                rolls = set(data["rollNumber"].dropna().astype(str))
                 for sem in sorted(data["semester"].unique()):
-                    s = data[data["semester"] == sem].copy()
-                    s["gp"] = s["grade"].str.strip().map(grades_map)
-                    is_pass = s["grade"].str.strip().isin(["O","A+","A","B+","B","C","P"]).all()
-                    if is_pass:
-                        sgpa = (s["gp"] * s["credits"]).sum() / s["credits"].sum()
-                        result.append({"Semester": str(sem), "SGPA": round(sgpa, 2)})
+                    values = []
+                    for roll in rolls:
+                        value = semester_metrics.get((roll, str(sem), "sgpa"))
+                        if pd.notna(value):
+                            values.append(float(value))
+                    if values:
+                        result.append({"Semester": str(sem), "SGPA": round(sum(values) / len(values), 2)})
                 return result
 
             trend1 = get_sgpa_trend(d1)
