@@ -29,7 +29,7 @@ def load_data():
     sem_sheets = [s for s in xl.sheet_names if s != "Summary"]
 
     summary = xl.parse("Summary")
-    summary["RollNumber"] = summary["RollNumber"].astype(str).str.strip().str.upper()
+    summary["RollNumber"] = summary["RollNumber"].map(normalize_hall_ticket)
     branch_map = dict(zip(summary["RollNumber"], summary["Branch"]))
 
     rows = []
@@ -65,7 +65,7 @@ def load_data():
                 "grade": data[grade_col].astype(str).str.strip().str.upper(),
                 "credits": pd.to_numeric(data[cr_col], errors="coerce"),
             })
-            sub["rollNumber"] = sub["rollNumber"].astype(str).str.strip().str.upper()
+            sub["rollNumber"] = sub["rollNumber"].map(normalize_hall_ticket)
             sub["branch"] = sub["rollNumber"].map(branch_map)
             sub = sub.dropna(subset=["total"])
             rows.append(sub)
@@ -79,7 +79,7 @@ def load_data():
                 if metric_name in {"sgpa", "sem credits", "semester credits", "credits", "sem backlogs", "backlogs"}:
                     values = pd.to_numeric(data[metric_col], errors="coerce")
                     for idx, value in values.items():
-                        roll = str(data.iloc[idx, 0]).strip().upper()
+                        roll = normalize_hall_ticket(data.iloc[idx, 0])
                         if roll and pd.notna(value):
                             semester_metrics[(roll, semester, metric_name)] = value
 
@@ -89,16 +89,20 @@ def load_data():
 
 df = load_data()
 
+# Normalize Hall Ticket Numbers so accidental spaces do not cause false "Not Found" errors.
+def normalize_hall_ticket(value):
+    return "".join(str(value).split()).upper()
+
 # ── Academic Metric Helpers ───────────────────────────────────────────────────
 
 def get_workbook_sgpa(roll_number, semester, semester_metrics):
-    roll = str(roll_number).strip().upper()
+    roll = normalize_hall_ticket(roll_number)
     value = semester_metrics.get((roll, str(semester), "sgpa"))
     return float(value) if pd.notna(value) else None
 
 
 def get_student_cgpa(student_data, semester_metrics, grades_map):
-    roll = str(student_data["rollNumber"].iloc[0]).strip().upper()
+    roll = normalize_hall_ticket(student_data["rollNumber"].iloc[0])
     semester_rows = []
 
     for sem in sorted(student_data["semester"].unique()):
@@ -197,7 +201,7 @@ def generate_result_pdf(name, roll_number, branch, all_semesters, attempted_seme
 
         sem_calc = sem_df.copy()
         is_pass = sem_calc["grade"].isin(["O","A+","A","B+","B","C","P"]).all()
-        roll_key = str(roll_number).strip().upper()
+        roll_key = normalize_hall_ticket(roll_number)
         workbook_sgpa = None if semester_metrics is None else semester_metrics.get((roll_key, str(sem), "sgpa"))
         if pd.notna(workbook_sgpa):
             elements.append(Spacer(1, 4))
@@ -542,7 +546,7 @@ elif st.session_state.page == "Results":
         if hall_ticket.strip() == "":
             st.warning("⚠️ Please enter a valid Hall Ticket Number")
         else:
-            student_data = df[df["rollNumber"].str.upper() == hall_ticket.upper()]
+            student_data = df[df["rollNumber"].str.upper() == normalize_hall_ticket(hall_ticket)]
             if student_data.empty:
                 st.error("❌ No record found for this Hall Ticket Number")
             else:
@@ -587,7 +591,7 @@ elif st.session_state.page == "Results":
                         sem_df["grade"] = sem_df["grade"].str.strip().str.upper()
                         is_pass = sem_df["grade"].isin(["O", "A+", "A", "B+", "B", "C", "P"]).all()
                         total_credits = semester_metrics.get(
-                            (hall_ticket.strip().upper(), str(sem), "sem credits")
+                            (normalize_hall_ticket(hall_ticket), str(sem), "sem credits")
                         )
                         if pd.isna(total_credits):
                             total_credits = sem_df["credits"].sum()
@@ -700,7 +704,7 @@ elif st.session_state.page == "Insights":
     ht = st.text_input("Enter Hall Ticket Number")
 
     if ht:
-        student = df[df["rollNumber"].str.upper() == ht.upper()].copy()
+        student = df[df["rollNumber"].str.upper() == normalize_hall_ticket(ht)].copy()
 
         if student.empty:
             st.error("Student Not Found")
@@ -821,12 +825,12 @@ elif st.session_state.page == "Comparison":
         if not ht1.strip(): errors.append("Student 1 Hall Ticket Number is missing.")
         if not ht2.strip(): errors.append("Student 2 Hall Ticket Number is missing.")
 
-        d1 = df[df["rollNumber"].str.upper() == ht1.strip().upper()] if ht1.strip() else pd.DataFrame()
-        d2 = df[df["rollNumber"].str.upper() == ht2.strip().upper()] if ht2.strip() else pd.DataFrame()
+        d1 = df[df["rollNumber"].str.upper() == normalize_hall_ticket(ht1)] if ht1.strip() else pd.DataFrame()
+        d2 = df[df["rollNumber"].str.upper() == normalize_hall_ticket(ht2)] if ht2.strip() else pd.DataFrame()
 
         if ht1.strip() and d1.empty: errors.append(f"No record found for **{ht1.upper()}**.")
         if ht2.strip() and d2.empty: errors.append(f"No record found for **{ht2.upper()}**.")
-        if ht1.strip() and ht2.strip() and ht1.strip().upper() == ht2.strip().upper():
+        if ht1.strip() and ht2.strip() and normalize_hall_ticket(ht1) == normalize_hall_ticket(ht2):
             errors.append("Please enter two **different** Hall Ticket Numbers.")
 
         if errors:
@@ -906,7 +910,7 @@ elif st.session_state.page == "Comparison":
             def get_sgpa_trend(data):
                 result = []
                 for sem in sorted(data["semester"].unique()):
-                    roll = str(data["rollNumber"].iloc[0]).strip().upper()
+                    roll = normalize_hall_ticket(data["rollNumber"].iloc[0])
                     value = semester_metrics.get((roll, str(sem), "sgpa"))
                     if pd.notna(value):
                         result.append({"Semester": str(sem), "SGPA": round(float(value), 2)})
