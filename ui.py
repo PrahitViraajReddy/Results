@@ -840,17 +840,13 @@ elif st.session_state.page == "Comparison":
 
             semester_metrics = df.attrs.get("semester_metrics", {})
 
-            def get_sgpa_trend(data):
+                    def get_sgpa_trend(data):
                 result = []
-                rolls = set(data["rollNumber"].dropna().astype(str))
                 for sem in sorted(data["semester"].unique()):
-                    values = []
-                    for roll in rolls:
-                        value = semester_metrics.get((roll, str(sem), "sgpa"))
-                        if pd.notna(value):
-                            values.append(float(value))
-                    if values:
-                        result.append({"Semester": str(sem), "SGPA": round(sum(values) / len(values), 2)})
+                    roll = str(data["rollNumber"].iloc[0]).strip().upper()
+                    value = semester_metrics.get((roll, str(sem), "sgpa"))
+                    if pd.notna(value):
+                        result.append({"Semester": str(sem), "SGPA": round(float(value), 2)})
                 return result
 
             trend1 = get_sgpa_trend(d1)
