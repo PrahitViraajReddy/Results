@@ -1435,19 +1435,49 @@ elif st.session_state.page == "Analytics":
                 else:
                     st.info("Enter remaining credits greater than 0 to run future scenarios.")
 
-            # ── INTERNAL VS EXTERNAL ─────────────────────────────────────────
+            # ── THEORY VS LAB INTERNAL / EXTERNAL ─────────────────────────────
             with tabs[4]:
-                st.markdown('<div class="sec-label">📝 Internal vs External Analytics</div>', unsafe_allow_html=True)
+                st.markdown('<div class="sec-label">📝 Theory vs Lab Analytics</div>', unsafe_allow_html=True)
 
-                internal_avg = student["internal"].mean()
-                external_avg = student["external"].mean()
-                gap = internal_avg - external_avg
+                # Classification follows the JNTUH R22 AI & DS course structure.
+                # It is based on course identity, not credits, because 0-credit
+                # theory and 0-credit lab courses both exist.
+                practical_codes = {
+                    "CS106ES", "ME104ES", "PH107BS", "CS108ES", "EN109HS",
+                    "ME203ES", "CS206ES", "CH207BS", "EE208ES", "CS209ES",
+                    "AD306PC", "AD307PC", "AD308PC", "AD309PC",
+                    "AD406PC", "AD407PC", "AD409PC",
+                    "AD505PC", "AD506PC", "AD507PC",
+                    "AD604PC", "AD605PC"
+                }
 
-                c1, c2, c3 = st.columns(3)
+                def course_type(row):
+                    code = str(row["subjectCode"]).strip().upper()
+                    name = str(row["subjectName"]).strip().upper()
+                    if code in practical_codes or "LAB" in name or "LABORATORY" in name:
+                        return "Lab"
+                    return "Theory"
+
+                ie = student[[
+                    "semester", "subjectCode", "subjectName",
+                    "internal", "external", "total"
+                ]].copy()
+                ie["Type"] = ie.apply(course_type, axis=1)
+
+                theory = ie[ie["Type"] == "Theory"]
+                lab = ie[ie["Type"] == "Lab"]
+
+                theory_internal = theory["internal"].mean()
+                theory_external = theory["external"].mean()
+                lab_internal = lab["internal"].mean()
+                lab_external = lab["external"].mean()
+
+                c1, c2, c3, c4 = st.columns(4)
                 for col, label, value, sub in [
-                    (c1, "Internal Average", internal_avg, "Mean internal marks"),
-                    (c2, "External Average", external_avg, "Mean external marks"),
-                    (c3, "Internal − External", gap, "Positive means internal average is higher")
+                    (c1, "Theory Internal Avg", theory_internal, "Average internal marks"),
+                    (c2, "Theory External Avg", theory_external, "Average external marks"),
+                    (c3, "Lab Internal Avg", lab_internal, "Average internal marks"),
+                    (c4, "Lab External Avg", lab_external, "Average external marks")
                 ]:
                     with col:
                         value_text = "—" if pd.isna(value) else f"{value:.1f}"
@@ -1457,38 +1487,56 @@ elif st.session_state.page == "Analytics":
                             unsafe_allow_html=True
                         )
 
-                ie = student[[
-                    "semester", "subjectName", "internal", "external", "total"
-                ]].copy()
-                ie["Internal − External"] = ie["internal"] - ie["external"]
-                ie = ie.rename(columns={
+                comparison = pd.DataFrame({
+                    "Course Type": ["Theory", "Lab"],
+                    "Internal Average": [theory_internal, lab_internal],
+                    "External Average": [theory_external, lab_external]
+                })
+                st.dataframe(
+                    comparison.round(2),
+                    use_container_width=True, hide_index=True
+                )
+
+                chart_ie = comparison.melt(
+                    id_vars="Course Type",
+                    value_vars=["Internal Average", "External Average"],
+                    var_name="Assessment",
+                    value_name="Average Marks"
+                ).dropna(subset=["Average Marks"])
+
+                if not chart_ie.empty:
+                    fig_ie = px.bar(
+                        chart_ie,
+                        x="Course Type",
+                        y="Average Marks",
+                        color="Assessment",
+                        barmode="group",
+                        text="Average Marks",
+                        title="Theory vs Lab: Internal and External Averages"
+                    )
+                    fig_ie.update_traces(texttemplate="%{text:.1f}", textposition="outside")
+                    fig_ie.update_layout(
+                        paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
+                        font=dict(family="DM Sans", color="#1a1a2e"),
+                        yaxis=dict(gridcolor="#e8e4da", title="Average Marks"),
+                        xaxis=dict(title="Course Type"),
+                        yaxis_range=[0, 100],
+                        margin=dict(l=20, r=20, t=50, b=40), height=420
+                    )
+                    st.plotly_chart(fig_ie, use_container_width=True, config={"displayModeBar": False})
+
+                detail = ie.rename(columns={
                     "semester": "Semester",
+                    "subjectCode": "Code",
                     "subjectName": "Subject",
                     "internal": "Internal",
                     "external": "External",
                     "total": "Total"
                 })
                 st.dataframe(
-                    ie.sort_values("Internal − External", ascending=False),
+                    detail.sort_values(["Type", "Semester", "Subject"]),
                     use_container_width=True, hide_index=True
                 )
-
-                chart_ie = ie.dropna(subset=["Internal", "External"]).copy()
-                if not chart_ie.empty:
-                    chart_ie = chart_ie.groupby("Subject")[["Internal", "External"]].mean().reset_index()
-                    chart_ie["Subject"] = chart_ie["Subject"].astype(str).str.slice(0, 35)
-                    fig_ie = px.bar(
-                        chart_ie, x="Subject", y=["Internal", "External"],
-                        barmode="group", title="Average Internal vs External by Subject"
-                    )
-                    fig_ie.update_layout(
-                        paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
-                        font=dict(family="DM Sans", color="#1a1a2e"),
-                        yaxis=dict(gridcolor="#e8e4da", title="Marks"),
-                        xaxis=dict(title="Subject"),
-                        margin=dict(l=20, r=20, t=50, b=80), height=420
-                    )
-                    st.plotly_chart(fig_ie, use_container_width=True, config={"displayModeBar": False})
 
             # ── GRADES & BACKLOGS ────────────────────────────────────────────
             with tabs[5]:
