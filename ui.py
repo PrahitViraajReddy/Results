@@ -87,11 +87,11 @@ def load_data():
     result.attrs["semester_metrics"] = semester_metrics
     return result
 
-df = load_data()
-
 # Normalize Hall Ticket Numbers so accidental spaces do not cause false "Not Found" errors.
 def normalize_hall_ticket(value):
     return "".join(str(value).split()).upper()
+
+df = load_data()
 
 # ── Academic Metric Helpers ───────────────────────────────────────────────────
 
