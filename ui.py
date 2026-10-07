@@ -989,6 +989,25 @@ elif st.session_state.page == "Comparison":
                         use_container_width=True, hide_index=True
                     )
 
+            # ── EXPORT COMPARISON DATA ───────────────────────────────────────
+            comparison_export_frames = [
+                metric_rows.assign(Section="Academic Performance"),
+                movement_compare.assign(Section="Semester Movement"),
+                sem_compare.assign(Section="Semester Performance"),
+                type_compare.assign(Section="Theory vs Lab"),
+                pd.DataFrame(grade_rows).assign(Section="Grades & Backlogs")
+            ]
+            if common:
+                comparison_export_frames.append(common_df.assign(Section="Common Subjects"))
+            comparison_export = pd.concat(comparison_export_frames, ignore_index=True, sort=False)
+            st.download_button(
+                label="📥 Export Comparison Data",
+                data=comparison_export.to_csv(index=False).encode("utf-8"),
+                file_name=f"{normalize_hall_ticket(ht1)}_vs_{normalize_hall_ticket(ht2)}_comparison.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+
 elif st.session_state.page == "Analytics":
     import plotly.express as px
 
@@ -1026,6 +1045,14 @@ elif st.session_state.page == "Analytics":
                 <div class="card-sub">{metrics["roll"]} &nbsp;•&nbsp; {metrics["branch"]}</div>
             </div>
             """, unsafe_allow_html=True)
+
+            st.download_button(
+                label="📥 Export Analytics Data",
+                data=student[["semester", "subjectCode", "subjectName", "internal", "external", "total", "grade", "credits"]].to_csv(index=False).encode("utf-8"),
+                file_name=f"{normalized}_analytics_data.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
 
             tabs = st.tabs([
                 "📌 Performance",
