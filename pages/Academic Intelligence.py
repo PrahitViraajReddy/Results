@@ -25,7 +25,7 @@ semester_metrics = df.attrs.get("semester_metrics", {})
 st.markdown("# 🤖 Academic Intelligence")
 st.caption("Verified academic metrics → analytics → optional GenAI interpretation")
 
-tab_student, tab_batch, tab_subject, tab_whatif, tab_ai, tab_quality = st.tabs([
+tab_student, tab_batch, tab_subject, tab_whatif, tab_quality = st.tabs([
     "🎓 Student Scorecard",
     "📊 Batch Analytics",
     "📚 Subject Difficulty",
@@ -172,45 +172,6 @@ with tab_whatif:
             st.success("Target is already below the current trajectory.")
         else:
             st.info(f"You need an average SGPA of {required:.2f} across the remaining {remaining:.0f} credits.")
-
-with tab_ai:
-    st.subheader("✨ AI Academic Analyst")
-    st.caption("The LLM receives calculated metrics, not the raw workbook. Numerical calculations remain deterministic.")
-
-    roll_ai = st.text_input("Hall Ticket Number", placeholder="Enter a student Hall Ticket Number", key="ai_roll")
-    if roll_ai:
-        student = df[df["rollNumber"] == normalize_hall_ticket(roll_ai)].copy()
-        if student.empty:
-            st.error("No student record found.")
-        else:
-            m = student_metrics(student, semester_metrics)
-            deterministic = rule_based_insights(m)
-
-            with st.expander("Verified metrics sent to AI", expanded=False):
-                st.json({
-                    "student": m["name"],
-                    "branch": m["branch"],
-                    "cgpa": m["cgpa"],
-                    "average_marks": round(m["avg_marks"], 2),
-                    "pass_rate": round(m["pass_rate"], 2),
-                    "backlogs": m["backlogs"],
-                    "sgpa": [{"semester": s, "sgpa": round(v, 2), "credits": c} for s, v, c in m["sgpa_rows"]],
-                })
-
-            for insight in deterministic:
-                st.info(insight)
-
-            api_key = st.text_input("Gemini API key (optional; prefer Streamlit Secrets)", type="password", key="gemini_key")
-            if st.button("✨ Generate AI Analysis", type="primary"):
-                with st.spinner("Generating academic analysis..."):
-                    prompt = build_ai_prompt(m, deterministic)
-                    result, error = generate_gemini_insight(prompt, api_key=api_key or None)
-                if error:
-                    st.warning(error)
-                    st.caption("The deterministic insights above remain available without an API key.")
-                else:
-                    st.markdown("### AI Interpretation")
-                    st.markdown(result)
 
 with tab_quality:
     st.subheader("🛡️ Data Quality & Validation")
