@@ -1336,7 +1336,11 @@ elif st.session_state.page == "Analytics":
                     subject_rank = filtered_subjects.dropna(subset=["Total"]).copy()
                     if not subject_rank.empty:
                         strongest = subject_rank.sort_values("Total", ascending=False).head(3)[["Subject", "Total", "Grade"]]
-                        weakest = subject_rank.sort_values("Total", ascending=True).head(3)[["Subject", "Total", "Grade"]]
+
+                        # Failed subjects must always take priority in the improvement list.
+                        failed = subject_rank[subject_rank["Grade"].isin(["F", "AB"])].sort_values("Total", ascending=True)
+                        passed = subject_rank[~subject_rank["Grade"].isin(["F", "AB"])].sort_values("Total", ascending=True)
+                        weakest = pd.concat([failed, passed], ignore_index=True).head(3)[["Subject", "Total", "Grade"]]
                         left, right = st.columns(2)
                         with left:
                             st.markdown('<div class="sec-label">🏆 Strongest Recorded Subjects</div>', unsafe_allow_html=True)
