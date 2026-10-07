@@ -494,7 +494,6 @@ with st.sidebar:
     nav_pages = {
         "Home":       "🏠  Home",
         "Results":    "📋  Results",
-        "Insights":   "💡  Insights",
         "Comparison": "⚖️  Comparison",
         "Analytics":  "📊  My Analytics",
     }
@@ -692,121 +691,11 @@ elif st.session_state.page == "Results":
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE ▸ INSIGHTS
 # ══════════════════════════════════════════════════════════════════════════════
-elif st.session_state.page == "Insights":
-
+elif st.session_state.page == "Comparison":
     import plotly.express as px
 
-    grades_map = {
-        "O": 10, "A+": 9, "A": 8, "B+": 7, "B": 6,
-        "C": 5, "P": 4, "F": 0, "AB": 0
-    }
-
-    st.markdown('<div class="page-title">💡 Insights</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">Performance Analytics</div>', unsafe_allow_html=True)
-
-    ht = st.text_input("Enter Hall Ticket Number")
-
-    if ht:
-        student = df[df["rollNumber"].str.upper() == normalize_hall_ticket(ht)].copy()
-
-        if student.empty:
-            st.error("Student Not Found")
-            st.stop()
-
-        # ── Subject Performance ──────────────────────────────────────────
-        st.subheader("📊 Subject Performance")
-
-        subject_scores = (
-            student.groupby("subjectName")["total"]
-            .mean()
-            .sort_values(ascending=False)
-        )
-
-        subject_plot = subject_scores.sort_values(ascending=True).reset_index()
-        subject_plot.columns = ["Subject", "Marks"]
-        fig1 = px.bar(
-            subject_plot,
-            x="Marks",
-            y="Subject",
-            orientation="h",
-            labels={"Subject": "Subject", "Marks": "Marks"},
-            height=max(420, min(720, 60 * len(subject_plot)))
-        )
-        fig1.update_layout(
-            dragmode=False,
-            yaxis={"categoryorder": "array", "categoryarray": subject_plot["Subject"].tolist()},
-            margin=dict(l=20, r=20, t=20, b=20)
-        )
-        fig1.update_traces(hovertemplate="<b>%{y}</b><br>Marks: %{x:.0f}<extra></extra>")
-        st.plotly_chart(fig1, use_container_width=True, config={"displayModeBar": False})
-
-        # ── SGPA Progression ─────────────────────────────────────────────
-        semester_metrics = df.attrs.get("semester_metrics", {})
-        student_roll = str(student["rollNumber"].iloc[0]).strip().upper()
-        sgpa_rows = []
-        for sem in sorted(student["semester"].unique()):
-            value = semester_metrics.get((student_roll, str(sem), "sgpa"))
-            if pd.notna(value):
-                sgpa_rows.append({"Semester": str(sem), "SGPA": float(value)})
-        sgpa_sem = pd.DataFrame(sgpa_rows)
-
-        st.subheader("📈 SGPA Progression")
-
-        if not sgpa_sem.empty:
-            fig2 = px.line(
-                sgpa_sem,
-                x="Semester",
-                y="SGPA",
-                markers=True,
-                labels={"Semester": "Semester", "SGPA": "SGPA"},
-                height=400
-            )
-            fig2.update_layout(
-                dragmode=False,
-                yaxis=dict(range=[0, 10.5]),
-                margin=dict(l=20, r=20, t=20, b=20)
-            )
-            fig2.update_traces(
-                text=sgpa_sem["SGPA"].round(2),
-                textposition="top center",
-                hovertemplate="<b>%{x}</b><br>SGPA: %{y:.2f}<extra></extra>"
-            )
-            st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
-        else:
-            st.info("SGPA trend is not available in the workbook for this student.")
-
-        # ── Best & Weak Subjects ─────────────────────────────────────────
-        st.subheader("🏆 Best & Weak Subjects")
-
-        subject_avg = (
-            student.groupby("subjectName")["total"]
-            .mean()
-            .sort_values(ascending=False)
-        )
-
-        best_subjects = subject_avg.head(3)
-        weak_subjects = subject_avg.tail(3)
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.markdown("### Top Subjects")
-            for subject, score in best_subjects.items():
-                st.success(f"{subject} — {score:.0f}")
-
-        with col2:
-            st.markdown("### Weak Subjects")
-            for subject, score in weak_subjects.items():
-                st.error(f"{subject} — {score:.0f}")
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  PAGE ▸ COMPARISON
-# ══════════════════════════════════════════════════════════════════════════════
-elif st.session_state.page == "Comparison":
-    import plotly.graph_objects as go
     st.markdown('<div class="page-title">⚖️ Compare Results</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">Enter two Hall Ticket Numbers to compare academic performance side by side</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Investigate two students side by side using the same academic metrics used in My Analytics.</div>', unsafe_allow_html=True)
 
     col_s1, col_vs, col_s2 = st.columns([5, 1, 5])
     with col_s1:
@@ -825,14 +714,18 @@ elif st.session_state.page == "Comparison":
 
     if compare_btn:
         errors = []
-        if not ht1.strip(): errors.append("Student 1 Hall Ticket Number is missing.")
-        if not ht2.strip(): errors.append("Student 2 Hall Ticket Number is missing.")
+        if not ht1.strip():
+            errors.append("Student 1 Hall Ticket Number is missing.")
+        if not ht2.strip():
+            errors.append("Student 2 Hall Ticket Number is missing.")
 
-        d1 = df[df["rollNumber"].str.upper() == normalize_hall_ticket(ht1)] if ht1.strip() else pd.DataFrame()
-        d2 = df[df["rollNumber"].str.upper() == normalize_hall_ticket(ht2)] if ht2.strip() else pd.DataFrame()
+        d1 = df[df["rollNumber"] == normalize_hall_ticket(ht1)] if ht1.strip() else pd.DataFrame()
+        d2 = df[df["rollNumber"] == normalize_hall_ticket(ht2)] if ht2.strip() else pd.DataFrame()
 
-        if ht1.strip() and d1.empty: errors.append(f"No record found for **{ht1.upper()}**.")
-        if ht2.strip() and d2.empty: errors.append(f"No record found for **{ht2.upper()}**.")
+        if ht1.strip() and d1.empty:
+            errors.append(f"No record found for **{ht1.upper()}**.")
+        if ht2.strip() and d2.empty:
+            errors.append(f"No record found for **{ht2.upper()}**.")
         if ht1.strip() and ht2.strip() and normalize_hall_ticket(ht1) == normalize_hall_ticket(ht2):
             errors.append("Please enter two **different** Hall Ticket Numbers.")
 
@@ -840,122 +733,60 @@ elif st.session_state.page == "Comparison":
             for e in errors:
                 st.error(f"❌  {e}")
         else:
-            grades_map = {'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6, 'C': 5, 'P': 4, 'F': 0, 'AB': 0}
-
-            name1 = d1["name"].iloc[0]
-            name2 = d2["name"].iloc[0]
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # ── Side by side info cards ───────────────────────────────────
-            c1, c2 = st.columns(2)
-            with c1:
-                total1 = d1["total"].sum()
-                credits1 = d1["credits"].sum()
-                passed1 = d1["grade"].str.strip().str.upper().isin(["O","A+","A","B+","B","C","P"]).all()
-                cgpa1 = get_student_cgpa(d1, df.attrs.get("semester_metrics", {}), grades_map) if passed1 else None
-                cgpa1_str = f"{cgpa1:.2f}" if cgpa1 is not None else "—"
-                st.markdown(f"""
-                <div class="card">
-                    <div class="card-label">👤 Student 1</div>
-                    <div class="card-value">{name1}</div>
-                    <div style="margin-top:14px;display:flex;gap:24px;">
-                        <div>
-                            <div class="card-label">Total Marks</div>
-                            <div style="font-weight:700;font-size:1.2rem;color:#1a1a2e;">{int(total1)}</div>
-                        </div>
-                        <div>
-                            <div class="card-label">Credits</div>
-                            <div style="font-weight:700;font-size:1.2rem;color:#1a1a2e;">{int(credits1)}</div>
-                        </div>
-                        <div>
-                            <div class="card-label">CGPA</div>
-                            <div style="font-weight:700;font-size:1.2rem;color:#c8a84b;">{cgpa1_str}</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with c2:
-                total2 = d2["total"].sum()
-                credits2 = d2["credits"].sum()
-                passed2 = d2["grade"].str.strip().str.upper().isin(["O","A+","A","B+","B","C","P"]).all()
-                cgpa2 = get_student_cgpa(d2, df.attrs.get("semester_metrics", {}), grades_map) if passed2 else None
-                cgpa2_str = f"{cgpa2:.2f}" if cgpa2 is not None else "—"
-                st.markdown(f"""
-                <div class="card">
-                    <div class="card-label">👤 Student 2</div>
-                    <div class="card-value">{name2}</div>
-                    <div style="margin-top:14px;display:flex;gap:24px;">
-                        <div>
-                            <div class="card-label">Total Marks</div>
-                            <div style="font-weight:700;font-size:1.2rem;color:#1a1a2e;">{int(total2)}</div>
-                        </div>
-                        <div>
-                            <div class="card-label">Credits</div>
-                            <div style="font-weight:700;font-size:1.2rem;color:#1a1a2e;">{int(credits2)}</div>
-                        </div>
-                        <div>
-                            <div class="card-label">CGPA</div>
-                            <div style="font-weight:700;font-size:1.2rem;color:#c8a84b;">{cgpa2_str}</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # ── SGPA Trend ────────────────────────────────────────────────
-            st.markdown('<div class="sec-label">📈 SGPA Trend Comparison</div>', unsafe_allow_html=True)
-
             semester_metrics = df.attrs.get("semester_metrics", {})
+            name1 = str(d1["name"].iloc[0])
+            name2 = str(d2["name"].iloc[0])
+            grades_map = {"O":10, "A+":9, "A":8, "B+":7, "B":6, "C":5, "P":4, "F":0, "AB":0}
+
+            cgpa1 = get_student_cgpa(d1, semester_metrics, grades_map)
+            cgpa2 = get_student_cgpa(d2, semester_metrics, grades_map)
+
+            def basic_metrics(data, cgpa):
+                passed = data["grade"].isin({"O","A+","A","B+","B","C","P"})
+                return {
+                    "CGPA": cgpa,
+                    "Average Marks": data["total"].mean(),
+                    "Pass %": passed.mean() * 100 if len(data) else None,
+                    "Credits": data["credits"].sum(),
+                    "Backlog Records": (~passed).sum()
+                }
+
+            m1 = basic_metrics(d1, cgpa1)
+            m2 = basic_metrics(d2, cgpa2)
+
+            # ── OVERALL ACADEMIC METRICS ────────────────────────────────────
+            st.markdown('<div class="sec-label">📊 Academic Performance Comparison</div>', unsafe_allow_html=True)
+            metric_rows = pd.DataFrame([
+                {"Metric": "CGPA", name1: m1["CGPA"], name2: m2["CGPA"]},
+                {"Metric": "Average Marks", name1: m1["Average Marks"], name2: m2["Average Marks"]},
+                {"Metric": "Pass %", name1: m1["Pass %"], name2: m2["Pass %"]},
+                {"Metric": "Recorded Credits", name1: m1["Credits"], name2: m2["Credits"]},
+                {"Metric": "Backlog Records", name1: m1["Backlog Records"], name2: m2["Backlog Records"]}
+            ])
+            metric_display = metric_rows.copy()
+            for col in [name1, name2]:
+                metric_display.loc[metric_display["Metric"].isin(["CGPA"]), col] = metric_display.loc[metric_display["Metric"].isin(["CGPA"]), col].apply(
+                    lambda x: f"{x:.2f}" if pd.notna(x) else "—"
+                )
+                metric_display.loc[metric_display["Metric"].isin(["Average Marks", "Pass %"]), col] = metric_display.loc[metric_display["Metric"].isin(["Average Marks", "Pass %"]), col].apply(
+                    lambda x: f"{x:.1f}" if pd.notna(x) else "—"
+                )
+                metric_display.loc[metric_display["Metric"].isin(["Recorded Credits", "Backlog Records"]), col] = metric_display.loc[metric_display["Metric"].isin(["Recorded Credits", "Backlog Records"]), col].apply(
+                    lambda x: f"{x:.0f}" if pd.notna(x) else "—"
+                )
+            st.dataframe(metric_display, use_container_width=True, hide_index=True)
+
+            # ── SEMESTER MOVEMENT ───────────────────────────────────────────
+            st.markdown('<div class="sec-label">🔎 Semester Movement Comparison</div>', unsafe_allow_html=True)
 
             def get_sgpa_trend(data):
                 result = []
-                for sem in sorted(data["semester"].unique()):
-                    roll = normalize_hall_ticket(data["rollNumber"].iloc[0])
-                    value = semester_metrics.get((roll, str(sem), "sgpa"))
+                roll = normalize_hall_ticket(data["rollNumber"].iloc[0])
+                for sem in sorted(data["semester"].astype(str).unique()):
+                    value = semester_metrics.get((roll, sem, "sgpa"))
                     if pd.notna(value):
-                        result.append({"Semester": str(sem), "SGPA": round(float(value), 2)})
+                        result.append({"Semester": sem, "SGPA": round(float(value), 2)})
                 return result
-
-            trend1 = get_sgpa_trend(d1)
-            trend2 = get_sgpa_trend(d2)
-
-            fig_sgpa = go.Figure()
-            if trend1:
-                t1 = pd.DataFrame(trend1)
-                fig_sgpa.add_trace(go.Scatter(
-                    x=t1["Semester"], y=t1["SGPA"],
-                    mode="lines+markers+text", name=name1,
-                    text=t1["SGPA"], textposition="top center",
-                    line=dict(color="#c8a84b", width=3),
-                    marker=dict(size=9, color="#c8a84b"),
-                    textfont=dict(size=11, color="#c8a84b")
-                ))
-            if trend2:
-                t2 = pd.DataFrame(trend2)
-                fig_sgpa.add_trace(go.Scatter(
-                    x=t2["Semester"], y=t2["SGPA"],
-                    mode="lines+markers+text", name=name2,
-                    text=t2["SGPA"], textposition="bottom center",
-                    line=dict(color="#1a1a2e", width=3, dash="dot"),
-                    marker=dict(size=9, color="#1a1a2e"),
-                    textfont=dict(size=11, color="#1a1a2e")
-                ))
-            fig_sgpa.update_layout(
-                paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
-                font=dict(family="DM Sans", color="#1a1a2e"),
-                yaxis=dict(range=[0, 10.5], gridcolor="#e8e4da", title="SGPA"),
-                xaxis=dict(gridcolor="#e8e4da", title="Semester"),
-                legend=dict(bgcolor="#ffffff", bordercolor="#e8e4da", borderwidth=1),
-                margin=dict(l=20, r=20, t=20, b=20),
-                height=360
-            )
-            st.plotly_chart(fig_sgpa, use_container_width=True, config={"displayModeBar": False})
-
-            # ── Semester Movement Comparison ─────────────────────────────
-            st.markdown('<div class="sec-label">🔎 Semester Movement Comparison</div>', unsafe_allow_html=True)
 
             def movement_rows(trend):
                 rows = []
@@ -970,218 +801,169 @@ elif st.session_state.page == "Comparison":
                     previous = sgpa
                 return rows
 
+            trend1 = get_sgpa_trend(d1)
+            trend2 = get_sgpa_trend(d2)
             movement1 = pd.DataFrame(movement_rows(trend1))
             movement2 = pd.DataFrame(movement_rows(trend2))
 
             if not movement1.empty or not movement2.empty:
-                m1 = movement1.rename(columns={
-                    "SGPA": f"{name1} SGPA",
-                    "SGPA Δ": f"{name1} SGPA Δ"
-                })
-                m2 = movement2.rename(columns={
-                    "SGPA": f"{name2} SGPA",
-                    "SGPA Δ": f"{name2} SGPA Δ"
-                })
-
-                movement_compare = pd.merge(
-                    m1, m2, on="Semester", how="outer"
-                ).sort_values("Semester")
-
+                m1_table = movement1.rename(columns={"SGPA": f"{name1} SGPA", "SGPA Δ": f"{name1} SGPA Δ"})
+                m2_table = movement2.rename(columns={"SGPA": f"{name2} SGPA", "SGPA Δ": f"{name2} SGPA Δ"})
+                movement_compare = pd.merge(m1_table, m2_table, on="Semester", how="outer").sort_values("Semester")
                 if f"{name1} SGPA" in movement_compare.columns and f"{name2} SGPA" in movement_compare.columns:
                     movement_compare["SGPA Gap"] = (
-                        movement_compare[f"{name1} SGPA"] -
-                        movement_compare[f"{name2} SGPA"]
+                        movement_compare[f"{name1} SGPA"] - movement_compare[f"{name2} SGPA"]
                     ).round(2)
+                st.dataframe(movement_compare, use_container_width=True, hide_index=True)
+                st.caption("SGPA Δ = change from the previous semester. SGPA Gap = Student 1 minus Student 2.")
 
-                st.dataframe(
-                    movement_compare,
-                    use_container_width=True,
-                    hide_index=True
-                )
-                st.caption(
-                    "SGPA Δ shows movement from the previous semester. "
-                    "SGPA Gap is Student 1 minus Student 2; positive means Student 1 scored higher."
-                )
-
-            # ── Comparison Summary ─────────────────────────────────────
-            st.markdown('<div class="sec-label">📊 Comparison Summary</div>', unsafe_allow_html=True)
-
-            avg1 = d1["total"].mean()
-            avg2 = d2["total"].mean()
-            avg_gap = abs(avg1 - avg2)
-            cgpa_gap = abs(cgpa1 - cgpa2) if cgpa1 is not None and cgpa2 is not None else None
-            common_subject_count = len(set(d1["subjectName"]) & set(d2["subjectName"]))
-
-            summary_cols = st.columns(4)
-            with summary_cols[0]:
-                st.markdown(f"""
-                <div class="card">
-                    <div class="card-label">Average Marks</div>
-                    <div class="card-value">{avg1:.1f}</div>
-                    <div class="card-sub">{name1}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with summary_cols[1]:
-                st.markdown(f"""
-                <div class="card">
-                    <div class="card-label">Average Marks</div>
-                    <div class="card-value">{avg2:.1f}</div>
-                    <div class="card-sub">{name2}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with summary_cols[2]:
-                cgpa_text = f"{cgpa_gap:.2f}" if cgpa_gap is not None else "—"
-                st.markdown(f"""
-                <div class="card">
-                    <div class="card-label">CGPA Difference</div>
-                    <div class="card-value">{cgpa_text}</div>
-                    <div class="card-sub">Absolute difference</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with summary_cols[3]:
-                st.markdown(f"""
-                <div class="card">
-                    <div class="card-label">Common Subjects</div>
-                    <div class="card-value">{common_subject_count}</div>
-                    <div class="card-sub">Subjects available for comparison</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            st.markdown(f"""
-            <div class="card" style="background:#ffffff;">
-                <div class="card-label">Mark Difference</div>
-                <div class="card-value">{avg_gap:.1f}</div>
-                <div class="card-sub">
-                    Absolute difference between the two students' overall average marks.
-                    This is shown as a descriptive metric, not as an overall ranking.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # ── Best & Weak Subjects Side by Side ────────────────────────
-            st.markdown('<div class="sec-label">📚 Best vs Weak Subjects</div>', unsafe_allow_html=True)
-
-            col_b1, col_b2 = st.columns(2)
-
-            def subject_cards(data, label, show_top=True):
-                avg = data.groupby("subjectName")["total"].mean().sort_values(ascending=not show_top)
-                subjects = avg.head(3)
-                icon = "🟢" if show_top else "🔴"
-                title = "Best" if show_top else "Weak"
-                bg = "#e8f5e9" if show_top else "#ffebee"
-                color = "#2e7d32" if show_top else "#c62828"
-                st.markdown(f'<div style="font-weight:600;color:#1a1a2e;margin-bottom:8px;">{icon} {title} — {label}</div>', unsafe_allow_html=True)
-                for subj, score in subjects.items():
-                    st.markdown(f"""
-                    <div style="background:{bg};border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-size:0.88rem;color:#1a1a2e;font-weight:500;">{subj[:30]}</span>
-                        <span style="font-weight:700;color:{color};">{int(score)}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-            with col_b1:
-                subject_cards(d1, name1, show_top=True)
-                st.markdown("<br>", unsafe_allow_html=True)
-                subject_cards(d1, name1, show_top=False)
-
-            with col_b2:
-                subject_cards(d2, name2, show_top=True)
-                st.markdown("<br>", unsafe_allow_html=True)
-                subject_cards(d2, name2, show_top=False)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # ── Common Strong & Weak Subjects ─────────────────────────────
-            common_subjects = set(d1["subjectName"]) & set(d2["subjectName"])
-            if common_subjects:
-                subj1 = d1[d1["subjectName"].isin(common_subjects)][["subjectName","total"]].rename(columns={"total": name1})
-                subj2 = d2[d2["subjectName"].isin(common_subjects)][["subjectName","total"]].rename(columns={"total": name2})
-                merged = pd.merge(subj1, subj2, on="subjectName")
-                merged["avg"] = (merged[name1] + merged[name2]) / 2
-                merged["diff"] = abs(merged[name1] - merged[name2])
-
-                common_strong = merged.sort_values("avg", ascending=False).head(3)
-                common_weak   = merged.sort_values("avg").head(3)
-                most_diff     = merged.sort_values("diff", ascending=False).head(3)
-
-                col_cs, col_cw = st.columns(2)
-                with col_cs:
-                    st.markdown('<div class="sec-label">🟢 Common Strong Subjects</div>', unsafe_allow_html=True)
-                    for _, row in common_strong.iterrows():
-                        st.markdown(f"""
-                        <div style="background:#e8f5e9;border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;">
-                            <span style="font-size:0.88rem;color:#1a1a2e;font-weight:500;">{row['subjectName'][:28]}</span>
-                            <span style="color:#2e7d32;font-weight:700;">avg {row['avg']:.0f}</span>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                with col_cw:
-                    st.markdown('<div class="sec-label">🔴 Common Weak Subjects</div>', unsafe_allow_html=True)
-                    for _, row in common_weak.iterrows():
-                        st.markdown(f"""
-                        <div style="background:#ffebee;border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;">
-                            <span style="font-size:0.88rem;color:#1a1a2e;font-weight:500;">{row['subjectName'][:28]}</span>
-                            <span style="color:#c62828;font-weight:700;">avg {row['avg']:.0f}</span>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown('<div class="sec-label">⚡ Biggest Performance Gap</div>', unsafe_allow_html=True)
-                for _, row in most_diff.iterrows():
-                    leader = name1 if row[name1] > row[name2] else name2
-                    leader_score = max(row[name1], row[name2])
-                    lagger_score = min(row[name1], row[name2])
-                    st.markdown(f"""
-                    <div class="card" style="padding:14px 18px;margin-bottom:8px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-weight:600;color:#1a1a2e;font-size:0.9rem;">{row['subjectName'][:35]}</span>
-                            <span style="background:#e8f5e9;color:#2e7d32;padding:2px 10px;border-radius:20px;font-size:0.8rem;font-weight:600;">+{row['diff']:.0f} gap</span>
-                        </div>
-                        <div style="margin-top:6px;font-size:0.82rem;color:#9090b0;">
-                            🏆 {leader}: <b style="color:#2e7d32;">{int(leader_score)}</b> &nbsp;|&nbsp; {int(lagger_score)}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-            # ── Common Subject Comparison ────────────────────────────────
-            if common_subjects:
-                chart_data = merged.sort_values("avg", ascending=False).head(10).copy()
-                chart_data = chart_data.sort_values("avg", ascending=True)
-
-                fig_subject = go.Figure()
-                fig_subject.add_trace(go.Bar(
-                    y=chart_data["subjectName"],
-                    x=chart_data[name1],
-                    name=name1,
-                    orientation="h"
-                ))
-                fig_subject.add_trace(go.Bar(
-                    y=chart_data["subjectName"],
-                    x=chart_data[name2],
-                    name=name2,
-                    orientation="h"
-                ))
-                fig_subject.update_layout(
-                    barmode="group",
-                    paper_bgcolor="#ffffff",
-                    plot_bgcolor="#f5f3ee",
+            trend_chart = pd.DataFrame([
+                {"Semester": r["Semester"], name1: r["SGPA"], name2: None}
+                for r in trend1
+            ])
+            if trend2:
+                for r in trend2:
+                    if r["Semester"] in set(trend_chart["Semester"]):
+                        trend_chart.loc[trend_chart["Semester"] == r["Semester"], name2] = r["SGPA"]
+                    else:
+                        trend_chart = pd.concat([trend_chart, pd.DataFrame([{"Semester": r["Semester"], name1: None, name2: r["SGPA"]}])], ignore_index=True)
+            if not trend_chart.empty:
+                trend_chart = trend_chart.sort_values("Semester")
+                fig = px.line(trend_chart, x="Semester", y=[name1, name2], markers=True, title="SGPA Trend Comparison")
+                fig.update_layout(
+                    paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
                     font=dict(family="DM Sans", color="#1a1a2e"),
-                    xaxis=dict(title="Marks", gridcolor="#e8e4da"),
-                    yaxis=dict(title="Common Subjects"),
-                    legend=dict(bgcolor="#ffffff", bordercolor="#e8e4da", borderwidth=1),
-                    margin=dict(l=20, r=20, t=20, b=20),
-                    height=max(360, 42 * len(chart_data))
+                    yaxis=dict(range=[0, 10.5], gridcolor="#e8e4da", title="SGPA"),
+                    xaxis=dict(gridcolor="#e8e4da", title="Semester"),
+                    margin=dict(l=20, r=20, t=50, b=20), height=360
                 )
-                fig_subject.update_traces(hovertemplate="<b>%{y}</b><br>Marks: %{x:.0f}<extra></extra>")
-                st.plotly_chart(fig_subject, use_container_width=True, config={"displayModeBar": False})
-            else:
-                st.info("No common subjects are available for visual comparison.")
+                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  PAGE ▸ MY ANALYTICS
-# ══════════════════════════════════════════════════════════════════════════════
+            # ── SEMESTER PERFORMANCE ────────────────────────────────────────
+            st.markdown('<div class="sec-label">📚 Semester Performance Comparison</div>', unsafe_allow_html=True)
+
+            def semester_table(data):
+                rows = []
+                roll = normalize_hall_ticket(data["rollNumber"].iloc[0])
+                for sem in sorted(data["semester"].astype(str).unique()):
+                    sem_df = data[data["semester"].astype(str) == sem]
+                    sgpa = semester_metrics.get((roll, sem, "sgpa"))
+                    passed = sem_df["grade"].isin({"O","A+","A","B+","B","C","P"})
+                    rows.append({
+                        "Semester": sem,
+                        "SGPA": round(float(sgpa), 2) if pd.notna(sgpa) else None,
+                        "Average Marks": round(float(sem_df["total"].mean()), 1),
+                        "Pass %": round(float(passed.mean() * 100), 1) if len(sem_df) else None,
+                        "Backlog Records": int((~passed).sum())
+                    })
+                return pd.DataFrame(rows)
+
+            sem1 = semester_table(d1)
+            sem2 = semester_table(d2)
+            sem_compare = pd.merge(
+                sem1.rename(columns={c: f"{name1} {c}" for c in sem1.columns if c != "Semester"}),
+                sem2.rename(columns={c: f"{name2} {c}" for c in sem2.columns if c != "Semester"}),
+                on="Semester", how="outer"
+            ).sort_values("Semester")
+            st.dataframe(sem_compare, use_container_width=True, hide_index=True)
+
+            # ── THEORY VS LAB ───────────────────────────────────────────────
+            st.markdown('<div class="sec-label">🧪 Theory vs Lab Comparison</div>', unsafe_allow_html=True)
+            practical_codes = {
+                "CS106ES", "ME104ES", "PH107BS", "CS108ES", "EN109HS",
+                "ME203ES", "CS206ES", "CH207BS", "EE208ES", "CS209ES",
+                "AD306PC", "AD307PC", "AD308PC", "AD406PC", "AD407PC",
+                "AD409PC", "AD505PC", "AD506PC", "AD507PC", "AD604PC", "AD605PC"
+            }
+
+            def course_type(row):
+                code = str(row["subjectCode"]).strip().upper()
+                name = str(row["subjectName"]).strip().upper()
+                return "Lab" if code in practical_codes or "LAB" in name or "LABORATORY" in name else "Theory"
+
+            def type_metrics(data):
+                x = data.copy()
+                x["Type"] = x.apply(course_type, axis=1)
+                result = []
+                for typ in ["Theory", "Lab"]:
+                    part = x[x["Type"] == typ]
+                    result.append({
+                        "Course Type": typ,
+                        "Internal Avg": part["internal"].mean() if not part.empty else None,
+                        "External Avg": part["external"].mean() if not part.empty else None,
+                        "Average Total": part["total"].mean() if not part.empty else None
+                    })
+                return pd.DataFrame(result)
+
+            type1 = type_metrics(d1)
+            type2 = type_metrics(d2)
+            type_compare = pd.merge(
+                type1.rename(columns={c: f"{name1} {c}" for c in type1.columns if c != "Course Type"}),
+                type2.rename(columns={c: f"{name2} {c}" for c in type2.columns if c != "Course Type"}),
+                on="Course Type", how="outer"
+            )
+            st.dataframe(type_compare.round(2), use_container_width=True, hide_index=True)
+
+            # ── COMMON SUBJECT ANALYSIS ─────────────────────────────────────
+            st.markdown('<div class="sec-label">📖 Common Subject Comparison</div>', unsafe_allow_html=True)
+            common = sorted(set(d1["subjectName"]) & set(d2["subjectName"]))
+            if common:
+                s1 = d1[d1["subjectName"].isin(common)][["subjectName","total","grade"]].rename(columns={"subjectName":"Subject", "total":name1, "grade":f"{name1} Grade"})
+                s2 = d2[d2["subjectName"].isin(common)][["subjectName","total","grade"]].rename(columns={"subjectName":"Subject", "total":name2, "grade":f"{name2} Grade"})
+                common_df = pd.merge(s1, s2, on="Subject", how="inner")
+                common_df["Marks Gap"] = (common_df[name1] - common_df[name2]).round(1)
+                st.dataframe(
+                    common_df.sort_values("Marks Gap", ascending=False),
+                    use_container_width=True, hide_index=True
+                )
+                chart = common_df.sort_values("Marks Gap", ascending=True).tail(min(12, len(common_df)))
+                fig_sub = px.bar(
+                    chart, x="Marks Gap", y="Subject", orientation="h",
+                    text="Marks Gap", title="Subject-wise Marks Gap (Student 1 − Student 2)"
+                )
+                fig_sub.update_traces(texttemplate="%{text:.1f}", textposition="outside")
+                fig_sub.update_layout(
+                    paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
+                    font=dict(family="DM Sans", color="#1a1a2e"),
+                    xaxis=dict(gridcolor="#e8e4da", title="Marks Gap"),
+                    yaxis=dict(title="Common Subjects"),
+                    margin=dict(l=20, r=40, t=50, b=20), height=max(360, 32 * len(chart))
+                )
+                st.plotly_chart(fig_sub, use_container_width=True, config={"displayModeBar": False})
+            else:
+                st.info("No common subjects are available for comparison.")
+
+            # ── GRADES & BACKLOGS ───────────────────────────────────────────
+            st.markdown('<div class="sec-label">🏷️ Grades & Backlogs Comparison</div>', unsafe_allow_html=True)
+            grade_order = ["O", "A+", "A", "B+", "B", "C", "P", "F", "AB"]
+            grade_rows = []
+            for grade in grade_order:
+                grade_rows.append({
+                    "Grade": grade,
+                    f"{name1} Records": int((d1["grade"] == grade).sum()),
+                    f"{name2} Records": int((d2["grade"] == grade).sum())
+                })
+            st.dataframe(pd.DataFrame(grade_rows), use_container_width=True, hide_index=True)
+
+            failed1 = d1[d1["grade"].isin({"F","AB"})][["semester","subjectCode","subjectName","grade"]]
+            failed2 = d2[d2["grade"].isin({"F","AB"})][["semester","subjectCode","subjectName","grade"]]
+            if failed1.empty and failed2.empty:
+                st.success("🎉 Neither student has recorded F/AB results in the available data.")
+            else:
+                b1, b2 = st.columns(2)
+                with b1:
+                    st.markdown(f'<div class="sec-label">⚠️ {name1} Recorded Backlogs</div>', unsafe_allow_html=True)
+                    st.dataframe(
+                        failed1.rename(columns={"semester":"Semester","subjectCode":"Code","subjectName":"Subject","grade":"Grade"}),
+                        use_container_width=True, hide_index=True
+                    )
+                with b2:
+                    st.markdown(f'<div class="sec-label">⚠️ {name2} Recorded Backlogs</div>', unsafe_allow_html=True)
+                    st.dataframe(
+                        failed2.rename(columns={"semester":"Semester","subjectCode":"Code","subjectName":"Subject","grade":"Grade"}),
+                        use_container_width=True, hide_index=True
+                    )
+
 elif st.session_state.page == "Analytics":
     import plotly.express as px
 
