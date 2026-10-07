@@ -1361,23 +1361,6 @@ elif st.session_state.page == "Analytics":
                     )
                     st.plotly_chart(fig_sub, use_container_width=True, config={"displayModeBar": False})
 
-                    st.markdown('<div class="sec-label">📐 Subject-level statistics</div>', unsafe_allow_html=True)
-                    subject_stats = (
-                        filtered_subjects.groupby("Subject")
-                        .agg(
-                            Attempts=("Subject", "size"),
-                            Avg_Total=("Total", "mean"),
-                            Avg_Internal=("Internal", "mean"),
-                            Avg_External=("External", "mean"),
-                            Credits=("Credits", "max")
-                        )
-                        .reset_index()
-                    )
-                    subject_stats["Avg_Total"] = subject_stats["Avg_Total"].round(2)
-                    subject_stats["Avg_Internal"] = subject_stats["Avg_Internal"].round(2)
-                    subject_stats["Avg_External"] = subject_stats["Avg_External"].round(2)
-                    st.dataframe(subject_stats, use_container_width=True, hide_index=True)
-                    st.caption("Attempts here mean recorded result rows for that subject. The workbook does not expose a separate attempt-history identifier, so repeat-attempt counts are not inferred beyond the available rows.")
 
             # ── GOAL & SCENARIO ANALYSIS ─────────────────────────────────────
             with tabs[3]:
