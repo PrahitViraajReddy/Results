@@ -837,7 +837,24 @@ elif st.session_state.page == "Comparison":
                         trend_chart = pd.concat([trend_chart, pd.DataFrame([{"Semester": r["Semester"], name1: None, name2: r["SGPA"]}])], ignore_index=True)
             if not trend_chart.empty:
                 trend_chart = trend_chart.sort_values("Semester")
-                fig = px.line(trend_chart, x="Semester", y=[name1, name2], markers=True, title="SGPA Trend Comparison")
+
+                # Use long-form data so Plotly receives one consistent numeric
+                # SGPA column even when the two students have different semester coverage.
+                trend_long = trend_chart.melt(
+                    id_vars="Semester",
+                    value_vars=[name1, name2],
+                    var_name="Student",
+                    value_name="SGPA"
+                ).dropna(subset=["SGPA"])
+
+                fig = px.line(
+                    trend_long,
+                    x="Semester",
+                    y="SGPA",
+                    color="Student",
+                    markers=True,
+                    title="SGPA Trend Comparison"
+                )
                 fig.update_layout(
                     paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
                     font=dict(family="DM Sans", color="#1a1a2e"),
