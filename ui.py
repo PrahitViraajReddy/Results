@@ -954,6 +954,55 @@ elif st.session_state.page == "Comparison":
             )
             st.plotly_chart(fig_sgpa, use_container_width=True, config={"displayModeBar": False})
 
+            # ── Semester Movement Comparison ─────────────────────────────
+            st.markdown('<div class="sec-label">🔎 Semester Movement Comparison</div>', unsafe_allow_html=True)
+
+            def movement_rows(trend):
+                rows = []
+                previous = None
+                for item in trend:
+                    sgpa = float(item["SGPA"])
+                    rows.append({
+                        "Semester": item["Semester"],
+                        "SGPA": round(sgpa, 2),
+                        "SGPA Δ": None if previous is None else round(sgpa - previous, 2)
+                    })
+                    previous = sgpa
+                return rows
+
+            movement1 = pd.DataFrame(movement_rows(trend1))
+            movement2 = pd.DataFrame(movement_rows(trend2))
+
+            if not movement1.empty or not movement2.empty:
+                m1 = movement1.rename(columns={
+                    "SGPA": f"{name1} SGPA",
+                    "SGPA Δ": f"{name1} SGPA Δ"
+                })
+                m2 = movement2.rename(columns={
+                    "SGPA": f"{name2} SGPA",
+                    "SGPA Δ": f"{name2} SGPA Δ"
+                })
+
+                movement_compare = pd.merge(
+                    m1, m2, on="Semester", how="outer"
+                ).sort_values("Semester")
+
+                if f"{name1} SGPA" in movement_compare.columns and f"{name2} SGPA" in movement_compare.columns:
+                    movement_compare["SGPA Gap"] = (
+                        movement_compare[f"{name1} SGPA"] -
+                        movement_compare[f"{name2} SGPA"]
+                    ).round(2)
+
+                st.dataframe(
+                    movement_compare,
+                    use_container_width=True,
+                    hide_index=True
+                )
+                st.caption(
+                    "SGPA Δ shows movement from the previous semester. "
+                    "SGPA Gap is Student 1 minus Student 2; positive means Student 1 scored higher."
+                )
+
             # ── Comparison Summary ─────────────────────────────────────
             st.markdown('<div class="sec-label">📊 Comparison Summary</div>', unsafe_allow_html=True)
 
