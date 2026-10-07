@@ -1246,10 +1246,12 @@ elif st.session_state.page == "Analytics":
                 if metrics["sgpa_rows"]:
                     best_sem = max(metrics["sgpa_rows"], key=lambda r: r[1])
                     worst_sem = min(metrics["sgpa_rows"], key=lambda r: r[1])
-                    latest_sem = metrics["sgpa_rows"][-1]                    prev_sem = metrics["sgpa_rows"][-2] if len(metrics["sgpa_rows"]) >= 2 else None
+                    latest_sem = metrics["sgpa_rows"][-1]
+                    prev_sem = metrics["sgpa_rows"][-2] if len(metrics["sgpa_rows"]) >= 2 else None
 
                     summary_cols = st.columns(3)
-                    summary_items = [                        ("Best Semester", f"{best_sem[0]} · {best_sem[1]:.2f}", "Highest recorded SGPA"),
+                    summary_items = [
+                        ("Best Semester", f"{best_sem[0]} · {best_sem[1]:.2f}", "Highest recorded SGPA"),
                         ("Weakest Semester", f"{worst_sem[0]} · {worst_sem[1]:.2f}", "Lowest recorded SGPA"),
                         ("Latest Movement", "—" if prev_sem is None else f"{latest_sem[1] - prev_sem[1]:+.2f}", "Change from previous semester"),
                     ]
@@ -1493,54 +1495,3 @@ elif st.session_state.page == "Analytics":
                 practical_codes = {
                     "CS106ES", "ME104ES", "PH107BS", "CS108ES", "EN109HS",
                     "ME203ES", "CS206ES", "CH207BS", "EE208ES", "CS209ES",
-                    "AD306PC", "AD307PC", "AD308PC", "AD309PC",
-                    "AD406PC", "AD407PC", "AD409PC",
-                    "AD505PC", "AD506PC", "AD507PC",
-                    "AD604PC", "AD605PC"
-                }
-
-                def course_type(row):
-                    code = str(row["subjectCode"]).strip().upper()
-                    name = str(row["subjectName"]).strip().upper()
-                    if code in practical_codes or "LAB" in name or "LABORATORY" in name:
-                        return "Lab"
-                    return "Theory"
-
-                ie = student[[
-                    "semester", "subjectCode", "subjectName",
-                    "internal", "external", "total"
-                ]].copy()
-                ie["Type"] = ie.apply(course_type, axis=1)
-
-                theory = ie[ie["Type"] == "Theory"]
-                lab = ie[ie["Type"] == "Lab"]
-
-                theory_internal = theory["internal"].mean()
-                theory_external = theory["external"].mean()
-                lab_internal = lab["internal"].mean()
-                lab_external = lab["external"].mean()
-
-                c1, c2, c3, c4 = st.columns(4)
-                for col, label, value, sub in [
-                    (c1, "Theory Internal Avg", theory_internal, "Average internal marks"),
-                    (c2, "Theory External Avg", theory_external, "Average external marks"),
-                    (c3, "Lab Internal Avg", lab_internal, "Average internal marks"),
-                    (c4, "Lab External Avg", lab_external, "Average external marks")
-                ]:
-                    with col:
-                        value_text = "—" if pd.isna(value) else f"{value:.1f}"
-                        st.markdown(
-                            f'<div class="card"><div class="card-label">{label}</div>'
-                            f'<div class="card-value">{value_text}</div><div class="card-sub">{sub}</div></div>',
-                            unsafe_allow_html=True
-                        )
-
-                comparison = pd.DataFrame({
-                    "Course Type": ["Theory", "Lab"],
-                    "Internal Average": [theory_internal, lab_internal],
-                    "External Average": [theory_external, lab_external]
-                })
-                st.dataframe(
-                    comparison.round(2),
-                    use_container_width=True, hide_index=True
-                )
