@@ -1,93 +1,129 @@
 # 🎓 Results App
 
-**Results App** is an academic performance analytics portal built with **Python, Pandas, OpenPyXL, Streamlit, Plotly, and ReportLab**.
+**Results App** is an academic performance intelligence platform built with **Python, Pandas, OpenPyXL, Streamlit, Plotly, and ReportLab**.
 
-The application converts semester-wise Excel result data into an interactive analytics interface where users can retrieve results, calculate SGPA/CGPA, explore subject performance, compare academic trends, and export PDF reports.
+It converts semester-wise Excel result data into a structured analytics workflow for student performance, batch analysis, subject difficulty, backlog analysis, what-if CGPA planning, reporting, and optional GenAI interpretation.
 
 ## 🌐 Live Demo
 
 [Open the deployed Results App](https://academic-results.streamlit.app/)
 
+## 🧠 Project Architecture
+
+**Excel → Normalization → Validation → Deterministic Academic Metrics → Analytics → Visualization/Reporting → Optional GenAI Interpretation**
+
+A key design decision is that **numerical calculations remain deterministic**. The GenAI layer receives calculated metrics and explains them in natural language; it does not calculate or alter marks, grades, SGPA, or CGPA.
+
 ## 📊 What This Project Demonstrates
 
-This project focuses on a practical analytics workflow:
+- Excel data ingestion and transformation
+- Pandas-based analytics
+- Data validation and quality checks
+- KPI and academic metric calculation
+- Student-level performance analytics
+- Batch-level analytics
+- Subject difficulty analysis
+- Backlog analysis
+- What-if / scenario analysis
+- Interactive visualization
+- PDF reporting
+- GenAI integration with grounded prompts
+- Streamlit multipage application architecture
 
-**Excel Data → Data Parsing → Data Transformation → Academic Metrics → EDA/Insights → Interactive Visualization → PDF Reporting**
+## ✨ Features
 
-It demonstrates skills relevant to **Data Analyst / BI / Reporting** roles:
+### 🎓 Student Performance Intelligence
+- Semester-wise result lookup
+- SGPA and credit-weighted CGPA
+- Performance scorecard
+- Average marks
+- Credits
+- Pass rate
+- Backlog count
+- Strong and weak subject identification
+- SGPA trend
+- Rule-based academic insights
 
-- Excel-based data handling
-- Pandas data transformation
-- Data cleaning and reshaping
-- KPI and metric calculation
-- Trend analysis
-- Comparative analysis
-- Interactive dashboard development
-- Automated report generation
+### 📊 Batch Analytics
+- Branch-wise average CGPA
+- Batch average pass rate
+- Students with backlogs
+- Grade distribution
+- Top performers
+- Branch filtering
 
-## ✨ Key Features
+### 📚 Subject Difficulty Analysis
+- Average marks
+- Pass rate
+- Failure rate
+- Attempt count
+- Highest-risk subjects
 
-- 📋 Semester-wise result lookup
-- 🎓 SGPA and CGPA calculation
-- 📊 Subject-level performance analysis
-- 📈 Semester-wise SGPA progression
-- 🏆 Best and weak subject identification
-- ⚖️ Side-by-side student comparison
-- 📉 Comparative performance trends
-- 📄 PDF result report generation
-- 📱 Responsive Streamlit interface
+### 📌 Backlog Analytics
+- Backlog record count
+- Students affected by backlogs
+- Subject-level backlog rate
+- Semester-wise backlog concentration
+- Students with highest backlog counts
+- Detailed backlog records
 
-## 📸 Application Screens
+### 🎯 What-if CGPA
+- Required future SGPA for a target CGPA
+- Projected final CGPA for a planned future SGPA
+- Mathematical reachability check for targets
 
-### 🏠 Home
-![Home](images/home.png)
+### ✨ GenAI Academic Analyst
+The optional AI layer uses verified metrics such as:
+- CGPA
+- Average marks
+- Pass rate
+- Backlog count
+- SGPA trend
+- Strong subjects
+- Weak subjects
+- Deterministic insights
 
-### 📋 Results
-![Results](images/results.png)
+The model is explicitly instructed not to invent academic facts or institutional policies.
 
-### 💡 Insights
-![Insights](images/insights.png)
+Configure GEMINI_API_KEY through Streamlit Secrets/environment variables, or enter a key temporarily in the AI page.
 
-### 📄 PDF Export
-![PDF Export](images/export_pdf.png)
-
-### ⚖️ Student Comparison
-![Comparison](images/comparison.png)
+### 🛡️ Data Quality
+Validation checks include:
+- Missing roll numbers
+- Missing names/subjects
+- Missing grades
+- Invalid grade codes
+- Invalid credits
+- Marks outside the expected range
+- Duplicate subject records
 
 ## 🧮 Analytics Logic
 
 ### SGPA
 
-SGPA is calculated using the weighted grade-point formula:
-
 **SGPA = Σ(Grade Point × Credits) / Σ(Credits)**
-
-The application treats a semester as eligible for SGPA calculation only when there is no `F` or `Ab` grade.
 
 ### CGPA
 
-CGPA is calculated from semester performance using credit-weighted SGPA values:
+**CGPA = Σ(Semester SGPA × Semester Credits) / Σ(Total Semester Credits)**
 
-**CGPA = Σ(Semester SGPA × Semester Credits) / Σ(Total Credits)**
+The workbook's semester-level SGPA/credit values are preferred when available.
 
-If required semester results are unavailable or contain unresolved backlogs, the application displays the corresponding status rather than silently treating the data as complete.
+## 📁 Project Structure
 
-## 📊 Excel Data Model
+    Results/
+    ├── ui.py
+    ├── academic_analytics.py
+    ├── genai_insights.py
+    ├── pages/
+    │   ├── Academic Intelligence.py
+    │   └── Backlog Analytics.py
+    ├── results.xlsx
+    ├── requirements.txt
+    ├── README.md
+    └── images/
 
-The application expects an Excel workbook containing:
-
-- A `Summary` sheet for student-level metadata
-- One sheet per semester
-- Subject-level columns containing:
-  - Subject Code
-  - Subject Name
-  - Internal Marks
-  - External Marks
-  - Total Marks
-  - Grade
-  - Credits
-
-The application transforms the wide semester-sheet structure into a long-format Pandas dataset for analysis and visualization.
+The original Results UI remains in ui.py. The new analytics capabilities are implemented as Streamlit multipage modules, reducing risk to the existing application while making the project easier to extend.
 
 ## 🛠️ Tech Stack
 
@@ -96,71 +132,35 @@ The application transforms the wide semester-sheet structure into a long-format 
 | **Python** | Application logic and analytics |
 | **Pandas** | Data processing and transformation |
 | **OpenPyXL** | Excel workbook parsing |
-| **Streamlit** | Interactive web application |
-| **Plotly** | Interactive performance charts |
-| **ReportLab** | PDF report generation |
-
-## 📁 Project Structure
-
-```text
-Results/
-├── ui.py
-├── results.xlsx
-├── requirements.txt
-├── README.md
-├── .gitignore
-├── .devcontainer/
-│   └── devcontainer.json
-└── images/
-    ├── home.png
-    ├── results.png
-    ├── insights.png
-    ├── export_pdf.png
-    └── comparison.png
-```
+| **Streamlit** | Interactive multipage application |
+| **Plotly** | Interactive charts |
+| **ReportLab** | PDF reporting |
+| **Gemini API** | Optional GenAI interpretation |
 
 ## 🚀 Run Locally
 
-### 1. Clone the repository
+    git clone https://github.com/PrahitViraajReddy/Results.git
+    cd Results
+    pip install -r requirements.txt
+    streamlit run ui.py
 
-```bash
-git clone https://github.com/PrahitViraajReddy/Results.git
-cd Results
-```
-
-### 2. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Provide the Excel workbook
-
-Place a compatible `results.xlsx` file in the project root.
-
-### 4. Start Streamlit
-
-```bash
-streamlit run ui.py
-```
+Streamlit will expose the existing application plus the new Academic Intelligence and Backlog Analytics pages.
 
 ## 🔐 Data Privacy
 
-The application processes student-level academic records, so **public deployments should use synthetic, anonymized, or otherwise appropriately authorized data**.
+The application processes student-level academic records. Public deployments should use synthetic, anonymized, or appropriately authorized data.
 
-Before publishing a workbook containing real student records, remove or anonymize personally identifying information and confirm that the data is appropriate for public use.
+Do not publish real student records publicly without authorization.
 
 ## 🔮 Future Improvements
 
-Potential extensions include:
-
+- SQLite/PostgreSQL backend
+- Excel/CSV → ETL pipeline
 - Authentication and role-based access
-- Admin analytics dashboard
-- Batch-level performance analytics
-- Branch-wise performance analysis
-- Database-backed data storage
-- Automated data validation
-- Additional KPI and reporting views
+- Admin dashboard
+- Automated scheduled data ingestion
+- Versioned data-quality reports
+- More advanced cohort analytics
 
 ## 👤 Author
 
@@ -171,4 +171,4 @@ Potential extensions include:
 
 ## ⚠️ Disclaimer
 
-This project is intended as an educational and portfolio project. Results and analytics are dependent on the quality and completeness of the supplied Excel data.
+This project is an educational and portfolio project. Analytics depend on the quality and completeness of the supplied academic data.
