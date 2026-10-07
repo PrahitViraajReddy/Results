@@ -1211,13 +1211,14 @@ elif st.session_state.page == "Analytics":
                     ("SGPA Volatility", f"{sgpa_std:.2f}", "Population standard deviation across semesters"),
                     ("SGPA Range", f"{sgpa_range:.2f}", "Highest SGPA minus lowest SGPA"),
                 ]
-                for col, (label, value, sub) in zip(cycle := c + st.columns(4), dashboard_cards):
-                    with col:
-                        st.markdown(
-                            f'<div class="card"><div class="card-label">{label}</div>'
-                            f'<div class="card-value">{value}</div><div class="card-sub">{sub}</div></div>',
-                            unsafe_allow_html=True
-                        )
+                for row_cards, row_data in zip([st.columns(4), st.columns(4)], [dashboard_cards[:4], dashboard_cards[4:]]):
+                    for col, (label, value, sub) in zip(row_cards, row_data):
+                        with col:
+                            st.markdown(
+                                f'<div class="card"><div class="card-label">{label}</div>'
+                                f'<div class="card-value">{value}</div><div class="card-sub">{sub}</div></div>',
+                                unsafe_allow_html=True
+                            )
 
                 if metrics["sgpa_rows"]:
                     trend = pd.DataFrame(
