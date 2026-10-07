@@ -756,6 +756,25 @@ elif st.session_state.page == "Comparison":
 
             # ── OVERALL ACADEMIC METRICS ────────────────────────────────────
             st.markdown('<div class="sec-label">📊 Academic Performance Comparison</div>', unsafe_allow_html=True)
+
+            metric_values = {
+                "CGPA": (m1["CGPA"], m2["CGPA"], True),
+                "Average Marks": (m1["Average Marks"], m2["Average Marks"], True),
+                "Pass %": (m1["Pass %"], m2["Pass %"], True),
+                "Recorded Credits": (m1["Credits"], m2["Credits"], True),
+                "Backlog Records": (m1["Backlog Records"], m2["Backlog Records"], False),
+            }
+            advantage = []
+            for metric_name, (v1, v2, higher_is_better) in metric_values.items():
+                if pd.notna(v1) and pd.notna(v2) and v1 != v2:
+                    better = name1 if (v1 > v2) == higher_is_better else name2
+                    advantage.append((metric_name, better))
+            if advantage:
+                top = pd.Series([x[1] for x in advantage]).value_counts()
+                lead_name = top.index[0]
+                lead_count = int(top.iloc[0])
+                st.info(f"📌 **{lead_name}** has the advantage on {lead_count} of {len(advantage)} comparable metrics. This is a metric summary, not an overall ranking.")
+
             metric_rows = pd.DataFrame([
                 {"Metric": "CGPA", name1: m1["CGPA"], name2: m2["CGPA"]},
                 {"Metric": "Average Marks", name1: m1["Average Marks"], name2: m2["Average Marks"]},
@@ -1000,7 +1019,7 @@ elif st.session_state.page == "Comparison":
             if common:
                 comparison_export_frames.append(common_df.assign(Section="Common Subjects"))
             comparison_export = pd.concat(comparison_export_frames, ignore_index=True, sort=False)
-            export_col1, export_col2 = st.columns(2)
+            export_col1, export_col2, export_col3 = st.columns(3)
             with export_col1:
                 st.download_button(
                     label="📥 Export Comparison CSV",
@@ -1028,6 +1047,9 @@ elif st.session_state.page == "Comparison":
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True
                 )
+
+            with export_col3:
+                st.caption("Exports contain the currently calculated comparison tables.")
 
 elif st.session_state.page == "Analytics":
     import plotly.express as px
@@ -1067,13 +1089,37 @@ elif st.session_state.page == "Analytics":
             </div>
             """, unsafe_allow_html=True)
 
-            st.download_button(
-                label="📥 Export Analytics Data",
-                data=student[["semester", "subjectCode", "subjectName", "internal", "external", "total", "grade", "credits"]].to_csv(index=False).encode("utf-8"),
-                file_name=f"{normalized}_analytics_data.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
+            analytics_export_csv = student[["semester", "subjectCode", "subjectName", "internal", "external", "total", "grade", "credits"]].to_csv(index=False).encode("utf-8")
+            export_a, export_b = st.columns(2)
+            with export_a:
+                st.download_button(
+                    label="📥 Export Analytics CSV",
+                    data=analytics_export_csv,
+                    file_name=f"{normalized}_analytics_data.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            with export_b:
+                analytics_excel = io.BytesIO()
+                with pd.ExcelWriter(analytics_excel, engine="openpyxl") as writer:
+                    student[["semester", "subjectCode", "subjectName", "internal", "external", "total", "grade", "credits"]].to_excel(writer, sheet_name="Subjects", index=False)
+                    pd.DataFrame(metrics["sgpa_rows"], columns=["Semester", "SGPA", "Credits"]).to_excel(writer, sheet_name="Semester SGPA", index=False)
+                    if metrics["sgpa_rows"]:
+                        pd.DataFrame([
+                            {"Metric": "CGPA", "Value": metrics["cgpa"]},
+                            {"Metric": "Average Marks", "Value": student["total"].mean()},
+                            {"Metric": "Pass Rate %", "Value": metrics["pass_rate"]},
+                            {"Metric": "Recorded Credits", "Value": metrics["credits"]},
+                            {"Metric": "Backlog Records", "Value": int((~student["grade"].isin({"O","A+","A","B+","B","C","P"})).sum())},
+                        ]).to_excel(writer, sheet_name="Overview", index=False)
+                analytics_excel.seek(0)
+                st.download_button(
+                    label="📊 Export Analytics Excel",
+                    data=analytics_excel.getvalue(),
+                    file_name=f"{normalized}_analytics_data.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
 
             tabs = st.tabs([
                 "📌 Performance",
@@ -1141,6 +1187,26 @@ elif st.session_state.page == "Analytics":
                     )
                     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
+                if metrics["sgpa_rows"]:
+                    best_sem = max(metrics["sgpa_rows"], key=lambda r: r[1])
+                    worst_sem = min(metrics["sgpa_rows"], key=lambda r: r[1])
+                    latest_sem = metrics["sgpa_rows"][-1]
+                    prev_sem = metrics["sgpa_rows"][-2] if len(metrics["sgpa_rows"]) >= 2 else None
+
+                    summary_cols = st.columns(3)
+                    summary_items = [
+                        ("Best Semester", f"{best_sem[0]} · {best_sem[1]:.2f}", "Highest recorded SGPA"),
+                        ("Weakest Semester", f"{worst_sem[0]} · {worst_sem[1]:.2f}", "Lowest recorded SGPA"),
+                        ("Latest Movement", "—" if prev_sem is None else f"{latest_sem[1] - prev_sem[1]:+.2f}", "Change from previous semester"),
+                    ]
+                    for col, (label, value, sub) in zip(summary_cols, summary_items):
+                        with col:
+                            st.markdown(
+                                f'<div class="card"><div class="card-label">{label}</div>'
+                                f'<div class="card-value">{value}</div><div class="card-sub">{sub}</div></div>',
+                                unsafe_allow_html=True
+                            )
+
                 if len(metrics["sgpa_rows"]) >= 2:
                     deltas = []
                     for i, (sem, sgpa, credits) in enumerate(metrics["sgpa_rows"]):
@@ -1186,6 +1252,8 @@ elif st.session_state.page == "Analytics":
                 if semester_rows:
                     sem_table = pd.DataFrame(semester_rows)
                     st.dataframe(sem_table, use_container_width=True, hide_index=True)
+
+                    st.caption("CGPA Contribution is the semester's weighted share of the recorded CGPA calculation; it is not a separate CGPA value.")
 
                     col1, col2 = st.columns(2)
                     with col1:
@@ -1276,6 +1344,7 @@ elif st.session_state.page == "Analytics":
                         with right:
                             st.markdown('<div class="sec-label">📉 Subjects Needing Attention</div>', unsafe_allow_html=True)
                             st.dataframe(weakest, use_container_width=True, hide_index=True)
+                        st.caption("These rankings are based on recorded Total marks only; they are descriptive, not predictive.")
 
 
             # ── GOAL & SCENARIO ANALYSIS ─────────────────────────────────────
