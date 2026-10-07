@@ -1000,13 +1000,34 @@ elif st.session_state.page == "Comparison":
             if common:
                 comparison_export_frames.append(common_df.assign(Section="Common Subjects"))
             comparison_export = pd.concat(comparison_export_frames, ignore_index=True, sort=False)
-            st.download_button(
-                label="📥 Export Comparison Data",
-                data=comparison_export.to_csv(index=False).encode("utf-8"),
-                file_name=f"{normalize_hall_ticket(ht1)}_vs_{normalize_hall_ticket(ht2)}_comparison.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
+            export_col1, export_col2 = st.columns(2)
+            with export_col1:
+                st.download_button(
+                    label="📥 Export Comparison CSV",
+                    data=comparison_export.to_csv(index=False).encode("utf-8"),
+                    file_name=f"{normalize_hall_ticket(ht1)}_vs_{normalize_hall_ticket(ht2)}_comparison.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+
+            with export_col2:
+                excel_buffer = io.BytesIO()
+                with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+                    metric_rows.to_excel(writer, sheet_name="Academic Performance", index=False)
+                    movement_compare.to_excel(writer, sheet_name="Semester Movement", index=False)
+                    sem_compare.to_excel(writer, sheet_name="Semester Performance", index=False)
+                    type_compare.to_excel(writer, sheet_name="Theory vs Lab", index=False)
+                    pd.DataFrame(grade_rows).to_excel(writer, sheet_name="Grades & Backlogs", index=False)
+                    if common:
+                        common_df.to_excel(writer, sheet_name="Common Subjects", index=False)
+                excel_buffer.seek(0)
+                st.download_button(
+                    label="📊 Export Comparison Excel",
+                    data=excel_buffer.getvalue(),
+                    file_name=f"{normalize_hall_ticket(ht1)}_vs_{normalize_hall_ticket(ht2)}_comparison.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
 
 elif st.session_state.page == "Analytics":
     import plotly.express as px
@@ -1244,6 +1265,18 @@ elif st.session_state.page == "Analytics":
                     )
                     st.plotly_chart(fig_sub, use_container_width=True, config={"displayModeBar": False})
 
+                    subject_rank = filtered_subjects.dropna(subset=["Total"]).copy()
+                    if not subject_rank.empty:
+                        strongest = subject_rank.sort_values("Total", ascending=False).head(3)[["Subject", "Total", "Grade"]]
+                        weakest = subject_rank.sort_values("Total", ascending=True).head(3)[["Subject", "Total", "Grade"]]
+                        left, right = st.columns(2)
+                        with left:
+                            st.markdown('<div class="sec-label">🏆 Strongest Recorded Subjects</div>', unsafe_allow_html=True)
+                            st.dataframe(strongest, use_container_width=True, hide_index=True)
+                        with right:
+                            st.markdown('<div class="sec-label">📉 Subjects Needing Attention</div>', unsafe_allow_html=True)
+                            st.dataframe(weakest, use_container_width=True, hide_index=True)
+
 
             # ── GOAL & SCENARIO ANALYSIS ─────────────────────────────────────
             with tabs[3]:
@@ -1264,8 +1297,9 @@ elif st.session_state.page == "Analytics":
                     )
                 with c3:
                     remaining_credits = st.number_input(
-                        "Remaining Credits", 0.0, value=20.0,
-                        step=1.0, key="analytics_remaining_credits"
+                        "Future Credits to Model", 0.0, value=0.0,
+                        step=1.0, key="analytics_remaining_credits",
+                        help="Enter the credits you expect to complete in the remaining semesters. The workbook does not define the full programme credit total, so this is not assumed automatically."
                     )
 
                 if remaining_credits > 0:
@@ -1306,12 +1340,16 @@ elif st.session_state.page == "Analytics":
                         current_cgpa, completed_credits,
                         remaining_credits, target_cgpa
                     )
-                    if required is not None:
-                        if required <= 10:
+                    if remaining_credits > 0:
+                        if current_cgpa >= target_cgpa:
+                            st.success(
+                                f"Your current CGPA (**{current_cgpa:.2f}**) is already at or above the target **{target_cgpa:.2f}**."
+                            )
+                        elif required is not None and required <= 10:
                             st.success(
                                 f"To finish at **{target_cgpa:.2f} CGPA**, the required average future SGPA is **{required:.2f}**."
                             )
-                        else:
+                        elif required is not None:
                             st.error(
                                 f"To finish at **{target_cgpa:.2f} CGPA**, the required future SGPA is **{required:.2f}**, which is above the 10.00 maximum."
                             )
