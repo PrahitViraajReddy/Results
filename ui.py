@@ -597,7 +597,6 @@ elif st.session_state.page == "Results":
                         )
                         if pd.isna(total_credits):
                             total_credits = sem_df["credits"].sum()
-
                         workbook_sgpa = get_workbook_sgpa(
                             hall_ticket.strip().upper(), sem, semester_metrics
                         )
@@ -1044,8 +1043,6 @@ elif st.session_state.page == "Comparison":
                     pd.DataFrame(grade_rows).to_excel(writer, sheet_name="Grades & Backlogs", index=False)
                     if common:
                         common_df.to_excel(writer, sheet_name="Common Subjects", index=False)
-                    # Keep the Analytics export workbook aligned with the visible analytics sections.
-                    student[["semester", "subjectCode", "subjectName", "internal", "external", "total", "grade", "credits"]].to_excel(writer, sheet_name="Subjects", index=False)
                 excel_buffer.seek(0)
                 st.download_button(
                     label="📊 Export Comparison Excel",
@@ -1197,8 +1194,7 @@ elif st.session_state.page == "Analytics":
                 if metrics["sgpa_rows"]:
                     best_sem = max(metrics["sgpa_rows"], key=lambda r: r[1])
                     worst_sem = min(metrics["sgpa_rows"], key=lambda r: r[1])
-                    latest_sem = metrics["sgpa_rows"][-1]
-                    prev_sem = metrics["sgpa_rows"][-2] if len(metrics["sgpa_rows"]) >= 2 else None
+                    latest_sem = metrics["sgpa_rows"][-1]                    prev_sem = metrics["sgpa_rows"][-2] if len(metrics["sgpa_rows"]) >= 2 else None
 
                     summary_cols = st.columns(3)
                     summary_items = [
@@ -1497,126 +1493,3 @@ elif st.session_state.page == "Analytics":
                     comparison.round(2),
                     use_container_width=True, hide_index=True
                 )
-
-                chart_ie = comparison.melt(
-                    id_vars="Course Type",
-                    value_vars=["Internal Average", "External Average"],
-                    var_name="Assessment",
-                    value_name="Average Marks"
-                ).dropna(subset=["Average Marks"])
-
-                if not chart_ie.empty:
-                    fig_ie = px.bar(
-                        chart_ie,
-                        x="Course Type",
-                        y="Average Marks",
-                        color="Assessment",
-                        barmode="group",
-                        text="Average Marks",
-                        title="Theory vs Lab: Internal and External Averages"
-                    )
-                    fig_ie.update_traces(texttemplate="%{text:.1f}", textposition="outside")
-                    fig_ie.update_layout(
-                        paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
-                        font=dict(family="DM Sans", color="#1a1a2e"),
-                        yaxis=dict(gridcolor="#e8e4da", title="Average Marks"),
-                        xaxis=dict(title="Course Type"),
-                        yaxis_range=[0, 100],
-                        margin=dict(l=20, r=20, t=50, b=40), height=420
-                    )
-                    st.plotly_chart(fig_ie, use_container_width=True, config={"displayModeBar": False})
-
-                detail = ie.rename(columns={
-                    "semester": "Semester",
-                    "subjectCode": "Code",
-                    "subjectName": "Subject",
-                    "internal": "Internal",
-                    "external": "External",
-                    "total": "Total"
-                })
-                st.dataframe(
-                    detail.sort_values(["Type", "Semester", "Subject"]),
-                    use_container_width=True, hide_index=True
-                )
-
-            # ── GRADES & BACKLOGS ────────────────────────────────────────────
-            with tabs[5]:
-                st.markdown('<div class="sec-label">🏷️ Grade & Backlog Analytics</div>', unsafe_allow_html=True)
-
-                grade_order = ["O", "A+", "A", "B+", "B", "C", "P", "F", "AB"]
-                grade_counts = student["grade"].value_counts().reindex(grade_order, fill_value=0)
-                grade_credits = student.groupby("grade")["credits"].sum().reindex(grade_order, fill_value=0)
-
-                grade_table = pd.DataFrame({
-                    "Grade": grade_order,
-                    "Records": grade_counts.values,
-                    "Credits": grade_credits.round(2).values,
-                    "Grade Point": [10, 9, 8, 7, 6, 5, 4, 0, 0]
-                })
-                st.dataframe(grade_table, use_container_width=True, hide_index=True)
-
-                fig_grade = px.bar(
-                    grade_table, x="Grade", y="Records", text="Records",
-                    title="Grade Distribution"
-                )
-                fig_grade.update_traces(textposition="outside")
-                fig_grade.update_layout(
-                    paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
-                    font=dict(family="DM Sans", color="#1a1a2e"),
-                    yaxis=dict(gridcolor="#e8e4da"),
-                    margin=dict(l=20, r=20, t=50, b=20), height=340
-                )
-                st.plotly_chart(fig_grade, use_container_width=True, config={"displayModeBar": False})
-
-                failed = student[student["grade"].isin({"F", "AB"})].copy()
-                backlog_count = int(len(failed))
-                f_count = int((failed["grade"] == "F").sum())
-                ab_count = int((failed["grade"] == "AB").sum())
-                b1, b2, b3 = st.columns(3)
-                for col, label, value, sub in [
-                    (b1, "Backlog Records", backlog_count, "F + AB records"),
-                    (b2, "F Records", f_count, "Failed grade"),
-                    (b3, "AB Records", ab_count, "Absent grade"),
-                ]:
-                    with col:
-                        st.markdown(
-                            f'<div class="card"><div class="card-label">{label}</div>'
-                            f'<div class="card-value">{value}</div><div class="card-sub">{sub}</div></div>',
-                            unsafe_allow_html=True
-                        )
-
-                if failed.empty:
-                    st.success("🎉 No F/AB records found in your results.")
-                else:
-                    st.markdown('<div class="sec-label">⚠️ Recorded Backlog Details</div>', unsafe_allow_html=True)
-                    backlog = failed[[
-                        "semester", "subjectCode", "subjectName",
-                        "total", "internal", "external", "grade", "credits"
-                    ]].rename(columns={
-                        "semester": "Semester",
-                        "subjectCode": "Code",
-                        "subjectName": "Subject",
-                        "total": "Total",
-                        "internal": "Internal",
-                        "external": "External",
-                        "grade": "Grade",
-                        "credits": "Credits"
-                    })
-                    st.dataframe(
-                        backlog.sort_values(["Semester", "Subject"]),
-                        use_container_width=True, hide_index=True
-                    )
-
-                    backlog_sem = (
-                        failed.groupby("semester")
-                        .agg(
-                            Backlog_Records=("subjectName", "size"),
-                            Backlog_Credits=("credits", "sum")
-                        )
-                        .reset_index()
-                        .rename(columns={"semester": "Semester"})
-                    )
-                    st.markdown('<div class="sec-label">📍 Backlog Origin by Semester</div>', unsafe_allow_html=True)
-                    st.dataframe(backlog_sem, use_container_width=True, hide_index=True)
-                    st.caption("Backlog analytics use the F/AB records present in the workbook. A separate repeat-attempt history is not available, so cleared/pending status and true attempt counts are not inferred.")
-
