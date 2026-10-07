@@ -775,6 +775,11 @@ elif st.session_state.page == "Comparison":
                 lead_count = int(top.iloc[0])
                 st.info(f"📌 **{lead_name}** has the advantage on {lead_count} of {len(advantage)} comparable metrics. This is a metric summary, not an overall ranking.")
 
+            if "Backlog Records" in m1 and "Backlog Records" in m2:
+                if m1["Backlog Records"] != m2["Backlog Records"]:
+                    fewer_backlogs = name1 if m1["Backlog Records"] < m2["Backlog Records"] else name2
+                    st.caption(f"⚠️ Backlog difference: **{fewer_backlogs}** has fewer recorded F/AB records.")
+
             metric_rows = pd.DataFrame([
                 {"Metric": "CGPA", name1: m1["CGPA"], name2: m2["CGPA"]},
                 {"Metric": "Average Marks", name1: m1["Average Marks"], name2: m2["Average Marks"]},
@@ -1039,6 +1044,8 @@ elif st.session_state.page == "Comparison":
                     pd.DataFrame(grade_rows).to_excel(writer, sheet_name="Grades & Backlogs", index=False)
                     if common:
                         common_df.to_excel(writer, sheet_name="Common Subjects", index=False)
+                    # Keep the Analytics export workbook aligned with the visible analytics sections.
+                    student[["semester", "subjectCode", "subjectName", "internal", "external", "total", "grade", "credits"]].to_excel(writer, sheet_name="Subjects", index=False)
                 excel_buffer.seek(0)
                 st.download_button(
                     label="📊 Export Comparison Excel",
@@ -1348,7 +1355,7 @@ elif st.session_state.page == "Analytics":
                         with right:
                             st.markdown('<div class="sec-label">📉 Subjects Needing Attention</div>', unsafe_allow_html=True)
                             st.dataframe(weakest, use_container_width=True, hide_index=True)
-                        st.caption("These rankings are based on recorded Total marks only; they are descriptive, not predictive.")
+                        st.caption("F/AB records are prioritized first. Remaining entries are the lowest recorded Total marks; these rankings are descriptive, not predictive.")
 
 
             # ── GOAL & SCENARIO ANALYSIS ─────────────────────────────────────
@@ -1562,6 +1569,22 @@ elif st.session_state.page == "Analytics":
                 st.plotly_chart(fig_grade, use_container_width=True, config={"displayModeBar": False})
 
                 failed = student[student["grade"].isin({"F", "AB"})].copy()
+                backlog_count = int(len(failed))
+                f_count = int((failed["grade"] == "F").sum())
+                ab_count = int((failed["grade"] == "AB").sum())
+                b1, b2, b3 = st.columns(3)
+                for col, label, value, sub in [
+                    (b1, "Backlog Records", backlog_count, "F + AB records"),
+                    (b2, "F Records", f_count, "Failed grade"),
+                    (b3, "AB Records", ab_count, "Absent grade"),
+                ]:
+                    with col:
+                        st.markdown(
+                            f'<div class="card"><div class="card-label">{label}</div>'
+                            f'<div class="card-value">{value}</div><div class="card-sub">{sub}</div></div>',
+                            unsafe_allow_html=True
+                        )
+
                 if failed.empty:
                     st.success("🎉 No F/AB records found in your results.")
                 else:
