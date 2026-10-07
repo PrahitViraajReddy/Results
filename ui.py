@@ -1141,12 +1141,13 @@ elif st.session_state.page == "Analytics":
     )
 
     semester_metrics = df.attrs.get("semester_metrics", {})
-    tab_score, tab_whatif, tab_batch, tab_subject, tab_backlog = st.tabs([
+    tab_score, tab_whatif, tab_batch, tab_subject, tab_backlog, tab_quality = st.tabs([
         "🎓 Student Scorecard",
         "🎯 What-if CGPA",
         "📈 Batch Analytics",
         "📚 Subject Difficulty",
         "⚠️ Backlog Analytics",
+        "🧪 Data Quality",
     ])
 
     # ── Student Scorecard ────────────────────────────────────────────────────
@@ -1530,3 +1531,27 @@ elif st.session_state.page == "Analytics":
                 use_container_width=True,
                 hide_index=True,
             )
+
+    # ── Data Quality ──────────────────────────────────────────────────────────
+    with tab_quality:
+        st.markdown('<div class="sec-label">🧪 Workbook Validation</div>', unsafe_allow_html=True)
+        st.caption("Validation is read-only. No source data is modified by this dashboard.")
+
+        checks = validate_data(df)
+        quality = pd.DataFrame(checks, columns=["Check", "Issues"])
+        quality["Status"] = quality["Issues"].apply(lambda x: "✅ OK" if x == 0 else "⚠️ Review")
+
+        q1, q2, q3 = st.columns(3)
+        with q1:
+            st.markdown(f'<div class="card"><div class="card-label">Subject Records</div><div class="card-value">{len(df):,}</div></div>', unsafe_allow_html=True)
+        with q2:
+            st.markdown(f'<div class="card"><div class="card-label">Validation Checks</div><div class="card-value">{len(quality)}</div></div>', unsafe_allow_html=True)
+        with q3:
+            issue_count = int(quality["Issues"].sum())
+            st.markdown(f'<div class="card"><div class="card-label">Issues Found</div><div class="card-value">{issue_count:,}</div></div>', unsafe_allow_html=True)
+
+        st.dataframe(quality, use_container_width=True, hide_index=True)
+        if issue_count == 0:
+            st.success("✅ All current validation checks passed.")
+        else:
+            st.warning("⚠️ Some records need review. These checks report issues; they do not modify the workbook.")
