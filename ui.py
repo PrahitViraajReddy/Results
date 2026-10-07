@@ -763,17 +763,25 @@ elif st.session_state.page == "Comparison":
                 {"Metric": "Recorded Credits", name1: m1["Credits"], name2: m2["Credits"]},
                 {"Metric": "Backlog Records", name1: m1["Backlog Records"], name2: m2["Backlog Records"]}
             ])
-            metric_display = metric_rows.copy()
-            for col in [name1, name2]:
-                metric_display.loc[metric_display["Metric"].isin(["CGPA"]), col] = metric_display.loc[metric_display["Metric"].isin(["CGPA"]), col].apply(
-                    lambda x: f"{x:.2f}" if pd.notna(x) else "—"
-                )
-                metric_display.loc[metric_display["Metric"].isin(["Average Marks", "Pass %"]), col] = metric_display.loc[metric_display["Metric"].isin(["Average Marks", "Pass %"]), col].apply(
-                    lambda x: f"{x:.1f}" if pd.notna(x) else "—"
-                )
-                metric_display.loc[metric_display["Metric"].isin(["Recorded Credits", "Backlog Records"]), col] = metric_display.loc[metric_display["Metric"].isin(["Recorded Credits", "Backlog Records"]), col].apply(
-                    lambda x: f"{x:.0f}" if pd.notna(x) else "—"
-                )
+            # Format a separate display table as strings. This avoids pandas
+            # dtype conflicts when numeric columns are mixed with formatted text.
+            metric_display = pd.DataFrame({
+                "Metric": metric_rows["Metric"],
+                name1: [
+                    f"{m1['CGPA']:.2f}" if pd.notna(m1["CGPA"]) else "—",
+                    f"{m1['Average Marks']:.1f}" if pd.notna(m1["Average Marks"]) else "—",
+                    f"{m1['Pass %']:.1f}" if pd.notna(m1["Pass %"]) else "—",
+                    f"{m1['Credits']:.0f}" if pd.notna(m1["Credits"]) else "—",
+                    f"{m1['Backlog Records']:.0f}" if pd.notna(m1["Backlog Records"]) else "—"
+                ],
+                name2: [
+                    f"{m2['CGPA']:.2f}" if pd.notna(m2["CGPA"]) else "—",
+                    f"{m2['Average Marks']:.1f}" if pd.notna(m2["Average Marks"]) else "—",
+                    f"{m2['Pass %']:.1f}" if pd.notna(m2["Pass %"]) else "—",
+                    f"{m2['Credits']:.0f}" if pd.notna(m2["Credits"]) else "—",
+                    f"{m2['Backlog Records']:.0f}" if pd.notna(m2["Backlog Records"]) else "—"
+                ]
+            })
             st.dataframe(metric_display, use_container_width=True, hide_index=True)
 
             # ── SEMESTER MOVEMENT ───────────────────────────────────────────
