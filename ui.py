@@ -510,407 +510,6 @@ with st.sidebar:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  PAGE ▸ ANALYTICS
-# ══════════════════════════════════════════════════════════════════════════════
-elif st.session_state.page == "Analytics":
-    st.markdown('<div class="page-title">📊 Academic Analytics</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="page-sub">Deeper performance analysis built on the same results data.</div>',
-        unsafe_allow_html=True
-    )
-
-    semester_metrics = df.attrs.get("semester_metrics", {})
-    tab_score, tab_whatif, tab_batch, tab_subject, tab_backlog = st.tabs([
-        "🎓 Student Scorecard",
-        "🎯 What-if CGPA",
-        "📈 Batch Analytics",
-        "📚 Subject Difficulty",
-        "⚠️ Backlog Analytics",
-    ])
-
-    # ── Student Scorecard ────────────────────────────────────────────────────
-    with tab_score:
-        roll = st.text_input(
-            "Hall Ticket Number",
-            placeholder="Enter Hall Ticket No. e.g. 21A01A0501",
-            key="analytics_roll"
-        ).strip()
-
-        if roll:
-            normalized = normalize_hall_ticket(roll)
-            student = df[df["rollNumber"] == normalized]
-
-            if student.empty:
-                st.error("❌ No record found for this Hall Ticket Number.")
-            else:
-                metrics = student_metrics(student, semester_metrics)
-
-                st.markdown(f"""
-                <div class="card">
-                    <div class="card-label">Student</div>
-                    <div class="card-value">{metrics["name"]}</div>
-                    <div class="card-sub">{metrics["roll"]} &nbsp;•&nbsp; {metrics["branch"]}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-                cards = st.columns(4)
-                values = [
-                    ("CGPA", f'{metrics["cgpa"]:.2f}' if metrics["cgpa"] is not None else "—", "Weighted from workbook semester credits"),
-                    ("Average Marks", f'{metrics["avg_marks"]:.1f}', "Across recorded subject marks"),
-                    ("Credits", f'{metrics["credits"]:.0f}', "Recorded subject credits"),
-                    ("Pass %", f'{metrics["pass_rate"]:.1f}%', f'{metrics["backlogs"]} F/AB record(s)'),
-                ]
-                for col, (label, value, sub) in zip(cards, values):
-                    with col:
-                        st.markdown(f"""
-                        <div class="card">
-                            <div class="card-label">{label}</div>
-                            <div class="card-value">{value}</div>
-                            <div class="card-sub">{sub}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                sem_cols = st.columns(2)
-                with sem_cols[0]:
-                    best = metrics["best_semester"]
-                    best_text = f"Semester {best[0]} — SGPA {best[1]:.2f}" if best else "—"
-                    st.markdown(f"""
-                    <div class="card">
-                        <div class="card-label">Best Semester</div>
-                        <div class="card-value">{best_text}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with sem_cols[1]:
-                    weak = metrics["weakest_semester"]
-                    weak_text = f"Semester {weak[0]} — SGPA {weak[1]:.2f}" if weak else "—"
-                    st.markdown(f"""
-                    <div class="card">
-                        <div class="card-label">Weakest Semester</div>
-                        <div class="card-value">{weak_text}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                if metrics["sgpa_rows"]:
-                    trend = pd.DataFrame(
-                        [{"Semester": sem, "SGPA": sgpa} for sem, sgpa, _ in metrics["sgpa_rows"]]
-                    )
-                    st.markdown('<div class="sec-label">📈 Semester Performance</div>', unsafe_allow_html=True)
-                    import plotly.express as px
-                    fig = px.line(trend, x="Semester", y="SGPA", markers=True, text="SGPA")
-                    fig.update_traces(texttemplate="%{text:.2f}", textposition="top center")
-                    fig.update_layout(
-                        paper_bgcolor="#ffffff",
-                        plot_bgcolor="#f5f3ee",
-                        font=dict(family="DM Sans", color="#1a1a2e"),
-                        yaxis=dict(range=[0, 10.5], gridcolor="#e8e4da"),
-                        xaxis=dict(gridcolor="#e8e4da"),
-                        margin=dict(l=20, r=20, t=20, b=20),
-                        height=360,
-                    )
-                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-
-                st.markdown('<div class="sec-label">💡 Academic Insights</div>', unsafe_allow_html=True)
-                insights = []
-                if metrics["best_semester"]:
-                    insights.append(
-                        f'Strongest semester was Semester {metrics["best_semester"][0]} '
-                        f'with SGPA {metrics["best_semester"][1]:.2f}.'
-                    )
-                if metrics["weakest_semester"]:
-                    insights.append(
-                        f'Lowest recorded SGPA was {metrics["weakest_semester"][1]:.2f} '
-                        f'in Semester {metrics["weakest_semester"][0]}.'
-                    )
-                if len(metrics["sgpa_rows"]) >= 2:
-                    delta = metrics["sgpa_rows"][-1][1] - metrics["sgpa_rows"][0][1]
-                    direction = "improved" if delta > 0 else "declined" if delta < 0 else "remained stable"
-                    insights.append(
-                        f'From the first recorded semester to the latest, SGPA has '
-                        f'{direction} by {abs(delta):.2f}.'
-                    )
-                if metrics["backlogs"]:
-                    insights.append(f'{metrics["backlogs"]} subject record(s) are marked F/AB.')
-                else:
-                    insights.append("No F/AB subject records were found.")
-                for item in insights:
-                    st.markdown(f'<div class="card" style="padding:14px 18px;">• {item}</div>', unsafe_allow_html=True)
-
-                best_subjects = metrics["best_subjects"]
-                weak_subjects = metrics["weak_subjects"]
-                if not best_subjects.empty or not weak_subjects.empty:
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.markdown('<div class="sec-label">🟢 Strongest Subjects</div>', unsafe_allow_html=True)
-                        for subject, score in best_subjects.items():
-                            st.markdown(
-                                f'<div class="card" style="padding:12px 16px;margin-bottom:6px;">'
-                                f'<b>{subject}</b><span style="float:right;">{score:.1f}</span></div>',
-                                unsafe_allow_html=True
-                            )
-                    with c2:
-                        st.markdown('<div class="sec-label">🔴 Subjects Needing Attention</div>', unsafe_allow_html=True)
-                        for subject, score in weak_subjects.items():
-                            st.markdown(
-                                f'<div class="card" style="padding:12px 16px;margin-bottom:6px;">'
-                                f'<b>{subject}</b><span style="float:right;">{score:.1f}</span></div>',
-                                unsafe_allow_html=True
-                            )
-
-    # ── What-if CGPA ─────────────────────────────────────────────────────────
-    with tab_whatif:
-        st.markdown('<div class="sec-label">🎯 CGPA Target Calculator</div>', unsafe_allow_html=True)
-        st.caption("Use completed credits and remaining credits for a weighted CGPA projection.")
-
-        c1, c2 = st.columns(2)
-        with c1:
-            current_cgpa = st.number_input("Current CGPA", min_value=0.0, max_value=10.0, value=7.0, step=0.01, format="%.2f")
-            completed_credits = st.number_input("Completed Credits", min_value=0.0, value=100.0, step=1.0)
-            remaining_credits = st.number_input("Remaining Credits", min_value=0.0, value=20.0, step=1.0)
-        with c2:
-            target_cgpa = st.number_input("Target Final CGPA", min_value=0.0, max_value=10.0, value=8.0, step=0.01, format="%.2f")
-            future_sgpa = st.number_input("Expected Future SGPA", min_value=0.0, max_value=10.0, value=8.0, step=0.01, format="%.2f")
-
-        required = what_if_cgpa(current_cgpa, completed_credits, remaining_credits, target_cgpa)
-        projected = project_cgpa(current_cgpa, completed_credits, remaining_credits, future_sgpa)
-
-        c1, c2 = st.columns(2)
-        with c1:
-            if required is None:
-                req_text = "—"
-                req_sub = "No remaining credits available."
-            else:
-                req_text = f"{required:.2f}"
-                req_sub = "Required average SGPA"
-                if required > 10:
-                    req_sub = "Target is mathematically unreachable with a 10.00 SGPA cap."
-                elif required < 0:
-                    req_text = "0.00"
-                    req_sub = "Target is already below the current weighted level."
-            st.markdown(f"""
-            <div class="cgpa-card">
-                <div class="cgpa-left">
-                    <div class="cgpa-label">Target Requirement</div>
-                    <div class="cgpa-title">SGPA needed for {target_cgpa:.2f} CGPA</div>
-                    <div class="cgpa-formula">Weighted by completed and remaining credits</div>
-                </div>
-                <div class="cgpa-right">
-                    <div class="cgpa-value">{req_text}</div>
-                    <div class="cgpa-out-of">{req_sub}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        with c2:
-            st.markdown(f"""
-            <div class="cgpa-card">
-                <div class="cgpa-left">
-                    <div class="cgpa-label">Projection</div>
-                    <div class="cgpa-title">Projected final CGPA</div>
-                    <div class="cgpa-formula">If future average SGPA is {future_sgpa:.2f}</div>
-                </div>
-                <div class="cgpa-right">
-                    <div class="cgpa-value">{projected:.2f}</div>
-                    <div class="cgpa-out-of">Out of 10.00</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown('<div class="sec-label">📌 Planning Guide</div>', unsafe_allow_html=True)
-        if required is not None:
-            if required > 10:
-                st.error("This target cannot be reached with the supplied credit structure because the required SGPA exceeds 10.00.")
-            elif required >= 9:
-                st.warning("This target requires a very strong remaining-semester performance.")
-            elif required >= 8:
-                st.info("This target requires consistently strong performance in the remaining credits.")
-            else:
-                st.success("This target is mathematically achievable under the supplied assumptions.")
-
-    # ── Batch Analytics ───────────────────────────────────────────────────────
-    with tab_batch:
-        student_groups = df.groupby(["rollNumber", "name", "branch"], dropna=False)
-        batch_rows = []
-        for (roll_num, name, branch), group in student_groups:
-            m = student_metrics(group, semester_metrics)
-            if m["cgpa"] is not None:
-                batch_rows.append({
-                    "Roll Number": roll_num,
-                    "Name": name,
-                    "Branch": branch,
-                    "CGPA": m["cgpa"],
-                    "Pass %": m["pass_rate"],
-                    "Backlogs": m["backlogs"],
-                })
-        batch = pd.DataFrame(batch_rows)
-
-        if batch.empty:
-            st.warning("No complete CGPA records are available for batch analytics.")
-        else:
-            k1, k2, k3, k4 = st.columns(4)
-            for col, label, value in [
-                (k1, "Students", len(batch)),
-                (k2, "Average CGPA", f'{batch["CGPA"].mean():.2f}'),
-                (k3, "Highest CGPA", f'{batch["CGPA"].max():.2f}'),
-                (k4, "Students with Backlogs", int((batch["Backlogs"] > 0).sum())),
-            ]:
-                with col:
-                    st.markdown(f"""
-                    <div class="card">
-                        <div class="card-label">{label}</div>
-                        <div class="card-value">{value}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-            branch_stats = batch.groupby("Branch").agg(
-                Students=("Roll Number", "nunique"),
-                Average_CGPA=("CGPA", "mean"),
-                Average_Pass=("Pass %", "mean"),
-            ).reset_index().sort_values("Average_CGPA", ascending=False)
-
-            st.markdown('<div class="sec-label">🏫 Branch-wise Performance</div>', unsafe_allow_html=True)
-            st.dataframe(
-                branch_stats.rename(columns={"Average_CGPA": "Avg CGPA", "Average_Pass": "Avg Pass %"}),
-                use_container_width=True,
-                hide_index=True,
-            )
-
-            sem_rows = []
-            for (roll_num, sem, _), group in df.groupby(["rollNumber", "semester", "name"], dropna=False):
-                sgpa = semester_metrics.get((normalize_hall_ticket(roll_num), str(sem), "sgpa"))
-                if sgpa is not None:
-                    sem_rows.append({"Semester": str(sem), "SGPA": float(sgpa)})
-            sem_stats = pd.DataFrame(sem_rows)
-            if not sem_stats.empty:
-                sem_stats = sem_stats.groupby("Semester").agg(
-                    Students=("SGPA", "size"),
-                    Average_SGPA=("SGPA", "mean"),
-                    Highest_SGPA=("SGPA", "max"),
-                ).reset_index()
-
-                st.markdown('<div class="sec-label">📚 Semester-wise SGPA</div>', unsafe_allow_html=True)
-                st.dataframe(
-                    sem_stats.rename(columns={"Average_SGPA": "Avg SGPA", "Highest_SGPA": "Highest SGPA"}),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown('<div class="sec-label">🏆 Top 10 CGPA</div>', unsafe_allow_html=True)
-                st.dataframe(
-                    batch.sort_values("CGPA", ascending=False).head(10)[["Name", "Branch", "CGPA"]].reset_index(drop=True),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-            with c2:
-                st.markdown('<div class="sec-label">📉 Bottom 10 CGPA</div>', unsafe_allow_html=True)
-                st.dataframe(
-                    batch.sort_values("CGPA", ascending=True).head(10)[["Name", "Branch", "CGPA"]].reset_index(drop=True),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
-            grade_counts = df["grade"].value_counts().reindex(
-                ["O", "A+", "A", "B+", "B", "C", "P", "F", "AB"], fill_value=0
-            )
-            st.markdown('<div class="sec-label">📊 Grade Distribution</div>', unsafe_allow_html=True)
-            import plotly.express as px
-            fig_grade = px.bar(x=grade_counts.index, y=grade_counts.values, labels={"x": "Grade", "y": "Records"})
-            fig_grade.update_layout(
-                paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
-                font=dict(family="DM Sans", color="#1a1a2e"),
-                margin=dict(l=20, r=20, t=20, b=20), height=330
-            )
-            st.plotly_chart(fig_grade, use_container_width=True, config={"displayModeBar": False})
-
-    # ── Subject Difficulty ───────────────────────────────────────────────────
-    with tab_subject:
-        subject_stats = df.groupby(["subjectCode", "subjectName"], dropna=False).agg(
-            Avg_Marks=("total", "mean"),
-            Records=("total", "size"),
-            Pass_Rate=("grade", lambda s: s.isin({"O","A+","A","B+","B","C","P"}).mean() * 100),
-            Failure_Rate=("grade", lambda s: s.isin({"F","AB"}).mean() * 100),
-        ).reset_index()
-
-        subject_stats["Avg Grade Point"] = subject_stats["subjectName"].map(
-            df.assign(_gp=df["grade"].map({"O":10,"A+":9,"A":8,"B+":7,"B":6,"C":5,"P":4,"F":0,"AB":0})
-              .groupby("subjectName")["_gp"].mean()
-        )
-        subject_stats = subject_stats.sort_values("Failure_Rate", ascending=False)
-
-        st.markdown('<div class="sec-label">🔴 Highest Failure Rate</div>', unsafe_allow_html=True)
-        st.dataframe(
-            subject_stats.head(10).rename(columns={
-                "subjectCode":"Code", "subjectName":"Subject",
-                "Avg_Marks":"Avg Marks", "Records":"Records",
-                "Pass_Rate":"Pass %", "Failure_Rate":"Failure %",
-            }).reset_index(drop=True),
-            use_container_width=True,
-            hide_index=True,
-        )
-
-        st.markdown('<div class="sec-label">📚 Full Subject Difficulty Table</div>', unsafe_allow_html=True)
-        st.dataframe(
-            subject_stats.rename(columns={
-                "subjectCode":"Code", "subjectName":"Subject",
-                "Avg_Marks":"Avg Marks", "Records":"Records",
-                "Pass_Rate":"Pass %", "Failure_Rate":"Failure %",
-            }).round({"Avg Marks":1, "Pass %":1, "Failure %":1, "Avg Grade Point":2}).reset_index(drop=True),
-            use_container_width=True,
-            hide_index=True,
-        )
-
-    # ── Backlog Analytics ────────────────────────────────────────────────────
-    with tab_backlog:
-        failed = df[df["grade"].isin({"F", "AB"})].copy()
-
-        c1, c2, c3, c4 = st.columns(4)
-        for col, label, value in [
-            (c1, "Backlog Records", len(failed)),
-            (c2, "Students Affected", failed["rollNumber"].nunique()),
-            (c3, "Affected Subjects", failed["subjectName"].nunique()),
-            (c4, "Backlog Rate", f'{(len(failed)/len(df)*100):.1f}%' if len(df) else "0.0%"),
-        ]:
-            with col:
-                st.markdown(f"""
-                <div class="card">
-                    <div class="card-label">{label}</div>
-                    <div class="card-value">{value}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-        if failed.empty:
-            st.success("🎉 No F/AB records found in the dataset.")
-        else:
-            backlog_subjects = failed.groupby("subjectName").size().sort_values(ascending=False).head(15)
-            st.markdown('<div class="sec-label">⚠️ Subjects with Most Backlog Records</div>', unsafe_allow_html=True)
-            st.dataframe(
-                backlog_subjects.rename("Backlog Records").reset_index(),
-                use_container_width=True,
-                hide_index=True,
-            )
-
-            semester_backlogs = failed.groupby("semester")["rollNumber"].nunique().sort_index()
-            st.markdown('<div class="sec-label">📅 Students with Backlogs by Semester</div>', unsafe_allow_html=True)
-            st.dataframe(
-                semester_backlogs.rename("Students with Backlogs").reset_index(),
-                use_container_width=True,
-                hide_index=True,
-            )
-
-            st.markdown('<div class="sec-label">📋 Detailed Backlog Records</div>', unsafe_allow_html=True)
-            st.dataframe(
-                failed[["rollNumber","name","branch","semester","subjectCode","subjectName","grade","credits"]]
-                .rename(columns={
-                    "rollNumber":"Roll Number","name":"Name","branch":"Branch",
-                    "semester":"Semester","subjectCode":"Code","subjectName":"Subject",
-                    "grade":"Grade","credits":"Credits"
-                })
-                .sort_values(["Roll Number","Semester"]),
-                use_container_width=True,
-                hide_index=True,
-            )
-
-# ══════════════════════════════════════════════════════════════════════════════
 #  PAGE ▸ HOME
 # ══════════════════════════════════════════════════════════════════════════════
 if st.session_state.page == "Home":
@@ -1530,3 +1129,404 @@ elif st.session_state.page == "Comparison":
                 st.plotly_chart(fig_subject, use_container_width=True, config={"displayModeBar": False})
             else:
                 st.info("No common subjects are available for visual comparison.")
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PAGE ▸ ANALYTICS
+# ══════════════════════════════════════════════════════════════════════════════
+elif st.session_state.page == "Analytics":
+    st.markdown('<div class="page-title">📊 Academic Analytics</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="page-sub">Deeper performance analysis built on the same results data.</div>',
+        unsafe_allow_html=True
+    )
+
+    semester_metrics = df.attrs.get("semester_metrics", {})
+    tab_score, tab_whatif, tab_batch, tab_subject, tab_backlog = st.tabs([
+        "🎓 Student Scorecard",
+        "🎯 What-if CGPA",
+        "📈 Batch Analytics",
+        "📚 Subject Difficulty",
+        "⚠️ Backlog Analytics",
+    ])
+
+    # ── Student Scorecard ────────────────────────────────────────────────────
+    with tab_score:
+        roll = st.text_input(
+            "Hall Ticket Number",
+            placeholder="Enter Hall Ticket No. e.g. 21A01A0501",
+            key="analytics_roll"
+        ).strip()
+
+        if roll:
+            normalized = normalize_hall_ticket(roll)
+            student = df[df["rollNumber"] == normalized]
+
+            if student.empty:
+                st.error("❌ No record found for this Hall Ticket Number.")
+            else:
+                metrics = student_metrics(student, semester_metrics)
+
+                st.markdown(f"""
+                <div class="card">
+                    <div class="card-label">Student</div>
+                    <div class="card-value">{metrics["name"]}</div>
+                    <div class="card-sub">{metrics["roll"]} &nbsp;•&nbsp; {metrics["branch"]}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                cards = st.columns(4)
+                values = [
+                    ("CGPA", f'{metrics["cgpa"]:.2f}' if metrics["cgpa"] is not None else "—", "Weighted from workbook semester credits"),
+                    ("Average Marks", f'{metrics["avg_marks"]:.1f}', "Across recorded subject marks"),
+                    ("Credits", f'{metrics["credits"]:.0f}', "Recorded subject credits"),
+                    ("Pass %", f'{metrics["pass_rate"]:.1f}%', f'{metrics["backlogs"]} F/AB record(s)'),
+                ]
+                for col, (label, value, sub) in zip(cards, values):
+                    with col:
+                        st.markdown(f"""
+                        <div class="card">
+                            <div class="card-label">{label}</div>
+                            <div class="card-value">{value}</div>
+                            <div class="card-sub">{sub}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                sem_cols = st.columns(2)
+                with sem_cols[0]:
+                    best = metrics["best_semester"]
+                    best_text = f"Semester {best[0]} — SGPA {best[1]:.2f}" if best else "—"
+                    st.markdown(f"""
+                    <div class="card">
+                        <div class="card-label">Best Semester</div>
+                        <div class="card-value">{best_text}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with sem_cols[1]:
+                    weak = metrics["weakest_semester"]
+                    weak_text = f"Semester {weak[0]} — SGPA {weak[1]:.2f}" if weak else "—"
+                    st.markdown(f"""
+                    <div class="card">
+                        <div class="card-label">Weakest Semester</div>
+                        <div class="card-value">{weak_text}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                if metrics["sgpa_rows"]:
+                    trend = pd.DataFrame(
+                        [{"Semester": sem, "SGPA": sgpa} for sem, sgpa, _ in metrics["sgpa_rows"]]
+                    )
+                    st.markdown('<div class="sec-label">📈 Semester Performance</div>', unsafe_allow_html=True)
+                    import plotly.express as px
+                    fig = px.line(trend, x="Semester", y="SGPA", markers=True, text="SGPA")
+                    fig.update_traces(texttemplate="%{text:.2f}", textposition="top center")
+                    fig.update_layout(
+                        paper_bgcolor="#ffffff",
+                        plot_bgcolor="#f5f3ee",
+                        font=dict(family="DM Sans", color="#1a1a2e"),
+                        yaxis=dict(range=[0, 10.5], gridcolor="#e8e4da"),
+                        xaxis=dict(gridcolor="#e8e4da"),
+                        margin=dict(l=20, r=20, t=20, b=20),
+                        height=360,
+                    )
+                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+                st.markdown('<div class="sec-label">💡 Academic Insights</div>', unsafe_allow_html=True)
+                insights = []
+                if metrics["best_semester"]:
+                    insights.append(
+                        f'Strongest semester was Semester {metrics["best_semester"][0]} '
+                        f'with SGPA {metrics["best_semester"][1]:.2f}.'
+                    )
+                if metrics["weakest_semester"]:
+                    insights.append(
+                        f'Lowest recorded SGPA was {metrics["weakest_semester"][1]:.2f} '
+                        f'in Semester {metrics["weakest_semester"][0]}.'
+                    )
+                if len(metrics["sgpa_rows"]) >= 2:
+                    delta = metrics["sgpa_rows"][-1][1] - metrics["sgpa_rows"][0][1]
+                    direction = "improved" if delta > 0 else "declined" if delta < 0 else "remained stable"
+                    insights.append(
+                        f'From the first recorded semester to the latest, SGPA has '
+                        f'{direction} by {abs(delta):.2f}.'
+                    )
+                if metrics["backlogs"]:
+                    insights.append(f'{metrics["backlogs"]} subject record(s) are marked F/AB.')
+                else:
+                    insights.append("No F/AB subject records were found.")
+                for item in insights:
+                    st.markdown(f'<div class="card" style="padding:14px 18px;">• {item}</div>', unsafe_allow_html=True)
+
+                best_subjects = metrics["best_subjects"]
+                weak_subjects = metrics["weak_subjects"]
+                if not best_subjects.empty or not weak_subjects.empty:
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.markdown('<div class="sec-label">🟢 Strongest Subjects</div>', unsafe_allow_html=True)
+                        for subject, score in best_subjects.items():
+                            st.markdown(
+                                f'<div class="card" style="padding:12px 16px;margin-bottom:6px;">'
+                                f'<b>{subject}</b><span style="float:right;">{score:.1f}</span></div>',
+                                unsafe_allow_html=True
+                            )
+                    with c2:
+                        st.markdown('<div class="sec-label">🔴 Subjects Needing Attention</div>', unsafe_allow_html=True)
+                        for subject, score in weak_subjects.items():
+                            st.markdown(
+                                f'<div class="card" style="padding:12px 16px;margin-bottom:6px;">'
+                                f'<b>{subject}</b><span style="float:right;">{score:.1f}</span></div>',
+                                unsafe_allow_html=True
+                            )
+
+    # ── What-if CGPA ─────────────────────────────────────────────────────────
+    with tab_whatif:
+        st.markdown('<div class="sec-label">🎯 CGPA Target Calculator</div>', unsafe_allow_html=True)
+        st.caption("Use completed credits and remaining credits for a weighted CGPA projection.")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            current_cgpa = st.number_input("Current CGPA", min_value=0.0, max_value=10.0, value=7.0, step=0.01, format="%.2f")
+            completed_credits = st.number_input("Completed Credits", min_value=0.0, value=100.0, step=1.0)
+            remaining_credits = st.number_input("Remaining Credits", min_value=0.0, value=20.0, step=1.0)
+        with c2:
+            target_cgpa = st.number_input("Target Final CGPA", min_value=0.0, max_value=10.0, value=8.0, step=0.01, format="%.2f")
+            future_sgpa = st.number_input("Expected Future SGPA", min_value=0.0, max_value=10.0, value=8.0, step=0.01, format="%.2f")
+
+        required = what_if_cgpa(current_cgpa, completed_credits, remaining_credits, target_cgpa)
+        projected = project_cgpa(current_cgpa, completed_credits, remaining_credits, future_sgpa)
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if required is None:
+                req_text = "—"
+                req_sub = "No remaining credits available."
+            else:
+                req_text = f"{required:.2f}"
+                req_sub = "Required average SGPA"
+                if required > 10:
+                    req_sub = "Target is mathematically unreachable with a 10.00 SGPA cap."
+                elif required < 0:
+                    req_text = "0.00"
+                    req_sub = "Target is already below the current weighted level."
+            st.markdown(f"""
+            <div class="cgpa-card">
+                <div class="cgpa-left">
+                    <div class="cgpa-label">Target Requirement</div>
+                    <div class="cgpa-title">SGPA needed for {target_cgpa:.2f} CGPA</div>
+                    <div class="cgpa-formula">Weighted by completed and remaining credits</div>
+                </div>
+                <div class="cgpa-right">
+                    <div class="cgpa-value">{req_text}</div>
+                    <div class="cgpa-out-of">{req_sub}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        with c2:
+            st.markdown(f"""
+            <div class="cgpa-card">
+                <div class="cgpa-left">
+                    <div class="cgpa-label">Projection</div>
+                    <div class="cgpa-title">Projected final CGPA</div>
+                    <div class="cgpa-formula">If future average SGPA is {future_sgpa:.2f}</div>
+                </div>
+                <div class="cgpa-right">
+                    <div class="cgpa-value">{projected:.2f}</div>
+                    <div class="cgpa-out-of">Out of 10.00</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown('<div class="sec-label">📌 Planning Guide</div>', unsafe_allow_html=True)
+        if required is not None:
+            if required > 10:
+                st.error("This target cannot be reached with the supplied credit structure because the required SGPA exceeds 10.00.")
+            elif required >= 9:
+                st.warning("This target requires a very strong remaining-semester performance.")
+            elif required >= 8:
+                st.info("This target requires consistently strong performance in the remaining credits.")
+            else:
+                st.success("This target is mathematically achievable under the supplied assumptions.")
+
+    # ── Batch Analytics ───────────────────────────────────────────────────────
+    with tab_batch:
+        student_groups = df.groupby(["rollNumber", "name", "branch"], dropna=False)
+        batch_rows = []
+        for (roll_num, name, branch), group in student_groups:
+            m = student_metrics(group, semester_metrics)
+            if m["cgpa"] is not None:
+                batch_rows.append({
+                    "Roll Number": roll_num,
+                    "Name": name,
+                    "Branch": branch,
+                    "CGPA": m["cgpa"],
+                    "Pass %": m["pass_rate"],
+                    "Backlogs": m["backlogs"],
+                })
+        batch = pd.DataFrame(batch_rows)
+
+        if batch.empty:
+            st.warning("No complete CGPA records are available for batch analytics.")
+        else:
+            k1, k2, k3, k4 = st.columns(4)
+            for col, label, value in [
+                (k1, "Students", len(batch)),
+                (k2, "Average CGPA", f'{batch["CGPA"].mean():.2f}'),
+                (k3, "Highest CGPA", f'{batch["CGPA"].max():.2f}'),
+                (k4, "Students with Backlogs", int((batch["Backlogs"] > 0).sum())),
+            ]:
+                with col:
+                    st.markdown(f"""
+                    <div class="card">
+                        <div class="card-label">{label}</div>
+                        <div class="card-value">{value}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            branch_stats = batch.groupby("Branch").agg(
+                Students=("Roll Number", "nunique"),
+                Average_CGPA=("CGPA", "mean"),
+                Average_Pass=("Pass %", "mean"),
+            ).reset_index().sort_values("Average_CGPA", ascending=False)
+
+            st.markdown('<div class="sec-label">🏫 Branch-wise Performance</div>', unsafe_allow_html=True)
+            st.dataframe(
+                branch_stats.rename(columns={"Average_CGPA": "Avg CGPA", "Average_Pass": "Avg Pass %"}),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            sem_rows = []
+            for (roll_num, sem, _), group in df.groupby(["rollNumber", "semester", "name"], dropna=False):
+                sgpa = semester_metrics.get((normalize_hall_ticket(roll_num), str(sem), "sgpa"))
+                if sgpa is not None:
+                    sem_rows.append({"Semester": str(sem), "SGPA": float(sgpa)})
+            sem_stats = pd.DataFrame(sem_rows)
+            if not sem_stats.empty:
+                sem_stats = sem_stats.groupby("Semester").agg(
+                    Students=("SGPA", "size"),
+                    Average_SGPA=("SGPA", "mean"),
+                    Highest_SGPA=("SGPA", "max"),
+                ).reset_index()
+
+                st.markdown('<div class="sec-label">📚 Semester-wise SGPA</div>', unsafe_allow_html=True)
+                st.dataframe(
+                    sem_stats.rename(columns={"Average_SGPA": "Avg SGPA", "Highest_SGPA": "Highest SGPA"}),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown('<div class="sec-label">🏆 Top 10 CGPA</div>', unsafe_allow_html=True)
+                st.dataframe(
+                    batch.sort_values("CGPA", ascending=False).head(10)[["Name", "Branch", "CGPA"]].reset_index(drop=True),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            with c2:
+                st.markdown('<div class="sec-label">📉 Bottom 10 CGPA</div>', unsafe_allow_html=True)
+                st.dataframe(
+                    batch.sort_values("CGPA", ascending=True).head(10)[["Name", "Branch", "CGPA"]].reset_index(drop=True),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+            grade_counts = df["grade"].value_counts().reindex(
+                ["O", "A+", "A", "B+", "B", "C", "P", "F", "AB"], fill_value=0
+            )
+            st.markdown('<div class="sec-label">📊 Grade Distribution</div>', unsafe_allow_html=True)
+            import plotly.express as px
+            fig_grade = px.bar(x=grade_counts.index, y=grade_counts.values, labels={"x": "Grade", "y": "Records"})
+            fig_grade.update_layout(
+                paper_bgcolor="#ffffff", plot_bgcolor="#f5f3ee",
+                font=dict(family="DM Sans", color="#1a1a2e"),
+                margin=dict(l=20, r=20, t=20, b=20), height=330
+            )
+            st.plotly_chart(fig_grade, use_container_width=True, config={"displayModeBar": False})
+
+    # ── Subject Difficulty ───────────────────────────────────────────────────
+    with tab_subject:
+        subject_stats = df.groupby(["subjectCode", "subjectName"], dropna=False).agg(
+            Avg_Marks=("total", "mean"),
+            Records=("total", "size"),
+            Pass_Rate=("grade", lambda s: s.isin({"O","A+","A","B+","B","C","P"}).mean() * 100),
+            Failure_Rate=("grade", lambda s: s.isin({"F","AB"}).mean() * 100),
+        ).reset_index()
+
+        subject_stats["Avg Grade Point"] = subject_stats["subjectName"].map(
+            df.assign(_gp=df["grade"].map({"O":10,"A+":9,"A":8,"B+":7,"B":6,"C":5,"P":4,"F":0,"AB":0})
+              .groupby("subjectName")["_gp"].mean()
+        )
+        subject_stats = subject_stats.sort_values("Failure_Rate", ascending=False)
+
+        st.markdown('<div class="sec-label">🔴 Highest Failure Rate</div>', unsafe_allow_html=True)
+        st.dataframe(
+            subject_stats.head(10).rename(columns={
+                "subjectCode":"Code", "subjectName":"Subject",
+                "Avg_Marks":"Avg Marks", "Records":"Records",
+                "Pass_Rate":"Pass %", "Failure_Rate":"Failure %",
+            }).reset_index(drop=True),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        st.markdown('<div class="sec-label">📚 Full Subject Difficulty Table</div>', unsafe_allow_html=True)
+        st.dataframe(
+            subject_stats.rename(columns={
+                "subjectCode":"Code", "subjectName":"Subject",
+                "Avg_Marks":"Avg Marks", "Records":"Records",
+                "Pass_Rate":"Pass %", "Failure_Rate":"Failure %",
+            }).round({"Avg Marks":1, "Pass %":1, "Failure %":1, "Avg Grade Point":2}).reset_index(drop=True),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    # ── Backlog Analytics ────────────────────────────────────────────────────
+    with tab_backlog:
+        failed = df[df["grade"].isin({"F", "AB"})].copy()
+
+        c1, c2, c3, c4 = st.columns(4)
+        for col, label, value in [
+            (c1, "Backlog Records", len(failed)),
+            (c2, "Students Affected", failed["rollNumber"].nunique()),
+            (c3, "Affected Subjects", failed["subjectName"].nunique()),
+            (c4, "Backlog Rate", f'{(len(failed)/len(df)*100):.1f}%' if len(df) else "0.0%"),
+        ]:
+            with col:
+                st.markdown(f"""
+                <div class="card">
+                    <div class="card-label">{label}</div>
+                    <div class="card-value">{value}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        if failed.empty:
+            st.success("🎉 No F/AB records found in the dataset.")
+        else:
+            backlog_subjects = failed.groupby("subjectName").size().sort_values(ascending=False).head(15)
+            st.markdown('<div class="sec-label">⚠️ Subjects with Most Backlog Records</div>', unsafe_allow_html=True)
+            st.dataframe(
+                backlog_subjects.rename("Backlog Records").reset_index(),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            semester_backlogs = failed.groupby("semester")["rollNumber"].nunique().sort_index()
+            st.markdown('<div class="sec-label">📅 Students with Backlogs by Semester</div>', unsafe_allow_html=True)
+            st.dataframe(
+                semester_backlogs.rename("Students with Backlogs").reset_index(),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            st.markdown('<div class="sec-label">📋 Detailed Backlog Records</div>', unsafe_allow_html=True)
+            st.dataframe(
+                failed[["rollNumber","name","branch","semester","subjectCode","subjectName","grade","credits"]]
+                .rename(columns={
+                    "rollNumber":"Roll Number","name":"Name","branch":"Branch",
+                    "semester":"Semester","subjectCode":"Code","subjectName":"Subject",
+                    "grade":"Grade","credits":"Credits"
+                })
+                .sort_values(["Roll Number","Semester"]),
+                use_container_width=True,
+                hide_index=True,
+            )
