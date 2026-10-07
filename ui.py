@@ -1453,10 +1453,9 @@ elif st.session_state.page == "Analytics":
             Failure_Rate=("grade", lambda s: s.isin({"F","AB"}).mean() * 100),
         ).reset_index()
 
-        subject_stats["Avg Grade Point"] = subject_stats["subjectName"].map(
-            df.assign(_gp=df["grade"].map({"O":10,"A+":9,"A":8,"B+":7,"B":6,"C":5,"P":4,"F":0,"AB":0})
-              .groupby("subjectName")["_gp"].mean()
-        )
+        grade_points = {"O":10,"A+":9,"A":8,"B+":7,"B":6,"C":5,"P":4,"F":0,"AB":0}
+        avg_grade_points = df.assign(_gp=df["grade"].map(grade_points)).groupby("subjectName")["_gp"].mean()
+        subject_stats["Avg Grade Point"] = subject_stats["subjectName"].map(avg_grade_points)
         subject_stats = subject_stats.sort_values("Failure_Rate", ascending=False)
 
         st.markdown('<div class="sec-label">🔴 Highest Failure Rate</div>', unsafe_allow_html=True)
