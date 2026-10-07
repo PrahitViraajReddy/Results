@@ -92,6 +92,26 @@ def load_data():
 def normalize_hall_ticket(value):
     return "".join(str(value).split()).upper()
 
+
+def semester_sort_key(value):
+    """Sort labels like 1-1, 1-2, 2-1 in academic order."""
+    text = str(value).strip()
+    parts = text.replace("_", "-").split("-")
+    if len(parts) == 2 and all(part.isdigit() for part in parts):
+        return (int(parts[0]), int(parts[1]), "")
+    return (999, 999, text)
+
+
+def are_consecutive_semesters(previous, current):
+    """Return True only when two recorded semester labels are adjacent."""
+    a = semester_sort_key(previous)
+    b = semester_sort_key(current)
+    if a[0] >= 999 or b[0] >= 999:
+        return False
+    if a[0] == b[0]:
+        return b[1] == a[1] + 1
+    return b[0] == a[0] + 1 and a[1] == 2 and b[1] == 1
+
 df = load_data()
 
 # ── Academic Metric Helpers ───────────────────────────────────────────────────
@@ -811,7 +831,7 @@ elif st.session_state.page == "Comparison":
             def get_sgpa_trend(data):
                 result = []
                 roll = normalize_hall_ticket(data["rollNumber"].iloc[0])
-                for sem in sorted(data["semester"].astype(str).unique()):
+                for sem in sorted(data["semester"].astype(str).unique(), key=semester_sort_key):
                     value = semester_metrics.get((roll, sem, "sgpa"))
                     if pd.notna(value):
                         result.append({"Semester": sem, "SGPA": round(float(value), 2)})
@@ -819,15 +839,18 @@ elif st.session_state.page == "Comparison":
 
             def movement_rows(trend):
                 rows = []
-                previous = None
+                previous_item = None
                 for item in trend:
                     sgpa = float(item["SGPA"])
+                    delta = None
+                    if previous_item is not None and are_consecutive_semesters(previous_item["Semester"], item["Semester"]):
+                        delta = round(sgpa - float(previous_item["SGPA"]), 2)
                     rows.append({
                         "Semester": item["Semester"],
                         "SGPA": round(sgpa, 2),
-                        "SGPA Δ": None if previous is None else round(sgpa - previous, 2)
+                        "SGPA Δ": delta
                     })
-                    previous = sgpa
+                    previous_item = item
                 return rows
 
             trend1 = get_sgpa_trend(d1)
@@ -838,7 +861,9 @@ elif st.session_state.page == "Comparison":
             if not movement1.empty or not movement2.empty:
                 m1_table = movement1.rename(columns={"SGPA": f"{name1} SGPA", "SGPA Δ": f"{name1} SGPA Δ"})
                 m2_table = movement2.rename(columns={"SGPA": f"{name2} SGPA", "SGPA Δ": f"{name2} SGPA Δ"})
-                movement_compare = pd.merge(m1_table, m2_table, on="Semester", how="outer").sort_values("Semester")
+                movement_compare = pd.merge(m1_table, m2_table, on="Semester", how="outer")
+                movement_compare["_sort"] = movement_compare["Semester"].map(semester_sort_key)
+                movement_compare = movement_compare.sort_values("_sort").drop(columns="_sort")
                 if f"{name1} SGPA" in movement_compare.columns and f"{name2} SGPA" in movement_compare.columns:
                     movement_compare["SGPA Gap"] = (
                         movement_compare[f"{name1} SGPA"] - movement_compare[f"{name2} SGPA"]
@@ -857,7 +882,8 @@ elif st.session_state.page == "Comparison":
                     else:
                         trend_chart = pd.concat([trend_chart, pd.DataFrame([{"Semester": r["Semester"], name1: None, name2: r["SGPA"]}])], ignore_index=True)
             if not trend_chart.empty:
-                trend_chart = trend_chart.sort_values("Semester")
+                trend_chart["_sort"] = trend_chart["Semester"].map(semester_sort_key)
+                trend_chart = trend_chart.sort_values("_sort").drop(columns="_sort")
 
                 # Use long-form data so Plotly receives one consistent numeric
                 # SGPA column even when the two students have different semester coverage.
@@ -910,7 +936,9 @@ elif st.session_state.page == "Comparison":
                 sem1.rename(columns={c: f"{name1} {c}" for c in sem1.columns if c != "Semester"}),
                 sem2.rename(columns={c: f"{name2} {c}" for c in sem2.columns if c != "Semester"}),
                 on="Semester", how="outer"
-            ).sort_values("Semester")
+            )
+            sem_compare["_sort"] = sem_compare["Semester"].map(semester_sort_key)
+            sem_compare = sem_compare.sort_values("_sort").drop(columns="_sort")
             st.dataframe(sem_compare, use_container_width=True, hide_index=True)
 
             # ── THEORY VS LAB ───────────────────────────────────────────────
@@ -952,11 +980,29 @@ elif st.session_state.page == "Comparison":
 
             # ── COMMON SUBJECT ANALYSIS ─────────────────────────────────────
             st.markdown('<div class="sec-label">📖 Common Subject Comparison</div>', unsafe_allow_html=True)
-            common = sorted(set(d1["subjectName"]) & set(d2["subjectName"]))
-            if common:
-                s1 = d1[d1["subjectName"].isin(common)][["subjectName","total","grade"]].rename(columns={"subjectName":"Subject", "total":name1, "grade":f"{name1} Grade"})
-                s2 = d2[d2["subjectName"].isin(common)][["subjectName","total","grade"]].rename(columns={"subjectName":"Subject", "total":name2, "grade":f"{name2} Grade"})
-                common_df = pd.merge(s1, s2, on="Subject", how="inner")
+            common_keys = sorted(
+                set(zip(d1["semester"].astype(str), d1["subjectCode"].astype(str), d1["subjectName"].astype(str))) &
+                set(zip(d2["semester"].astype(str), d2["subjectCode"].astype(str), d2["subjectName"].astype(str))),
+                key=lambda item: (semester_sort_key(item[0]), item[1], item[2])
+            )
+            if common_keys:
+                common_key_df = pd.DataFrame(common_keys, columns=["Semester", "Code", "Subject"])
+                s1 = d1.copy()
+                s1["Semester"] = s1["semester"].astype(str)
+                s1["Code"] = s1["subjectCode"].astype(str)
+                s1["Subject"] = s1["subjectName"].astype(str)
+                s1 = s1.merge(common_key_df, on=["Semester", "Code", "Subject"], how="inner")[
+                    ["Semester", "Code", "Subject", "total", "grade"]
+                ].rename(columns={"total": name1, "grade": f"{name1} Grade"})
+                s2 = d2.copy()
+                s2["Semester"] = s2["semester"].astype(str)
+                s2["Code"] = s2["subjectCode"].astype(str)
+                s2["Subject"] = s2["subjectName"].astype(str)
+                s2 = s2.merge(common_key_df, on=["Semester", "Code", "Subject"], how="inner")[
+                    ["Semester", "Code", "Subject", "total", "grade"]
+                ].rename(columns={"total": name2, "grade": f"{name2} Grade"})
+                common_df = pd.merge(s1, s2, on=["Semester", "Code", "Subject"], how="inner")
+                common_df["Marks Gap"] = (common_df[name1] - common_df[name2]).round(1)
                 common_df["Marks Gap"] = (common_df[name1] - common_df[name2]).round(1)
                 st.dataframe(
                     common_df.sort_values("Marks Gap", ascending=False),
@@ -1043,7 +1089,7 @@ elif st.session_state.page == "Comparison":
                 type_compare.assign(Section="Theory vs Lab"),
                 pd.DataFrame(grade_rows).assign(Section="Grades & Backlogs")
             ]
-            if common:
+            if common_keys:
                 comparison_export_frames.append(common_df.assign(Section="Common Subjects"))
             comparison_export = pd.concat(comparison_export_frames, ignore_index=True, sort=False)
             export_col1, export_col2, export_col3 = st.columns(3)
@@ -1064,7 +1110,7 @@ elif st.session_state.page == "Comparison":
                     sem_compare.to_excel(writer, sheet_name="Semester Performance", index=False)
                     type_compare.to_excel(writer, sheet_name="Theory vs Lab", index=False)
                     pd.DataFrame(grade_rows).to_excel(writer, sheet_name="Grades & Backlogs", index=False)
-                    if common:
+                    if common_keys:
                         common_df.to_excel(writer, sheet_name="Common Subjects", index=False)
                 excel_buffer.seek(0)
                 st.download_button(
@@ -1217,13 +1263,23 @@ elif st.session_state.page == "Analytics":
                     # ── SEMESTER MOVEMENT HIGHLIGHTS ─────────────────────────
                     if len(trend) >= 2:
                         trend = trend.copy()
-                        trend["SGPA Δ"] = trend["SGPA"].diff()
+                        movement_deltas = []
+                        for i, row in trend.iterrows():
+                            if i == trend.index[0]:
+                                movement_deltas.append(None)
+                                continue
+                            previous_row = trend.iloc[list(trend.index).index(i) - 1]
+                            if are_consecutive_semesters(previous_row["Semester"], row["Semester"]):
+                                movement_deltas.append(round(float(row["SGPA"]) - float(previous_row["SGPA"]), 2))
+                            else:
+                                movement_deltas.append(None)
+                        trend["SGPA Δ"] = movement_deltas
                         valid_moves = trend.dropna(subset=["SGPA Δ"])
                         if not valid_moves.empty:
                             best_move = valid_moves.loc[valid_moves["SGPA Δ"].idxmax()]
                             worst_move = valid_moves.loc[valid_moves["SGPA Δ"].idxmin()]
-                            best_sem = valid_moves.loc[valid_moves["SGPA Δ"].idxmax(), "Semester"]
-                            worst_sem = valid_moves.loc[valid_moves["SGPA Δ"].idxmin(), "Semester"]
+                            best_sem = best_move["Semester"]
+                            worst_sem = worst_move["Semester"]
                             best_delta = float(best_move["SGPA Δ"])
                             worst_delta = float(worst_move["SGPA Δ"])
 
@@ -1247,11 +1303,15 @@ elif st.session_state.page == "Analytics":
                     worst_sem = min(metrics["sgpa_rows"], key=lambda r: r[1])
                     latest_sem = metrics["sgpa_rows"][-1]
                     prev_sem = metrics["sgpa_rows"][-2] if len(metrics["sgpa_rows"]) >= 2 else None
+                    latest_delta = None
+                    if prev_sem is not None and are_consecutive_semesters(prev_sem[0], latest_sem[0]):
+                        latest_delta = latest_sem[1] - prev_sem[1]
 
                     summary_cols = st.columns(3)
-                    summary_items = [                        ("Best Semester", f"{best_sem[0]} · {best_sem[1]:.2f}", "Highest recorded SGPA"),
+                    summary_items = [
+                        ("Best Semester", f"{best_sem[0]} · {best_sem[1]:.2f}", "Highest recorded SGPA"),
                         ("Weakest Semester", f"{worst_sem[0]} · {worst_sem[1]:.2f}", "Lowest recorded SGPA"),
-                        ("Latest Movement", "—" if prev_sem is None else f"{latest_sem[1] - prev_sem[1]:+.2f}", "Change from previous semester"),
+                        ("Latest Movement", "—" if latest_delta is None else f"{latest_delta:+.2f}", "Change from previous recorded semester"),
                     ]
                     for col, (label, value, sub) in zip(summary_cols, summary_items):
                         with col:
@@ -1263,14 +1323,19 @@ elif st.session_state.page == "Analytics":
 
                 if len(metrics["sgpa_rows"]) >= 2:
                     deltas = []
-                    for i, (sem, sgpa, credits) in enumerate(metrics["sgpa_rows"]):
-                        previous = metrics["sgpa_rows"][i - 1][1] if i else None
+                    rows = metrics["sgpa_rows"]
+                    total_recorded_credits = sum(r[2] for r in rows)
+                    for i, (sem, sgpa, credits) in enumerate(rows):
+                        previous = rows[i - 1] if i else None
+                        delta = None
+                        if previous is not None and are_consecutive_semesters(previous[0], sem):
+                            delta = round(sgpa - previous[1], 2)
                         deltas.append({
                             "Semester": sem,
                             "SGPA": round(sgpa, 2),
-                            "Change vs Previous": None if previous is None else round(sgpa - previous, 2),
+                            "Change vs Previous": delta,
                             "Credits": credits,
-                            "Weighted Contribution": round((sgpa * credits) / sum(r[2] for r in metrics["sgpa_rows"]), 3)
+                            "Weighted Contribution": round((sgpa * credits) / total_recorded_credits, 3) if total_recorded_credits else None
                         })
                     st.markdown('<div class="sec-label">🔎 Semester Movement</div>', unsafe_allow_html=True)
                     st.dataframe(
