@@ -7,6 +7,13 @@ PASS_GRADES = {"O", "A+", "A", "B+", "B", "C", "P"}
 def normalize_hall_ticket(value):
     return "".join(str(value).split()).upper()
 
+def semester_sort_key(value):
+    text = str(value).strip()
+    parts = text.replace("_", "-").split("-")
+    if len(parts) == 2 and all(part.isdigit() for part in parts):
+        return (int(parts[0]), int(parts[1]), "")
+    return (999, 999, text)
+
 
 def load_academic_data(path="results.xlsx"):
     """Load the workbook into one normalized subject-level dataframe."""
