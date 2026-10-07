@@ -597,8 +597,7 @@ elif st.session_state.page == "Results":
                         )
                         if pd.isna(total_credits):
                             total_credits = sem_df["credits"].sum()
-                        workbook_sgpa = get_workbook_sgpa(
-                            hall_ticket.strip().upper(), sem, semester_metrics
+                        workbook_sgpa = get_workbook_sgpa(                            hall_ticket.strip().upper(), sem, semester_metrics
                         )
 
                         if workbook_sgpa is not None:
@@ -978,6 +977,31 @@ elif st.session_state.page == "Comparison":
                     margin=dict(l=20, r=40, t=50, b=20), height=max(360, 32 * len(chart))
                 )
                 st.plotly_chart(fig_sub, use_container_width=True, config={"displayModeBar": False})
+
+                # Highlight the largest subject-level differences and different outcomes.
+                biggest_gap = common_df.loc[common_df["Marks Gap"].abs().idxmax()]
+                gap_value = float(biggest_gap["Marks Gap"])
+                gap_winner = name1 if gap_value > 0 else name2 if gap_value < 0 else "Neither"
+                if gap_value != 0:
+                    st.info(
+                        f'📌 **Biggest Subject Gap:** {biggest_gap["Subject"]} — '
+                        f'**{abs(gap_value):.1f} marks** in favour of **{gap_winner}**.'
+                    )
+                else:
+                    st.info(f'📌 **Biggest Subject Gap:** {biggest_gap["Subject"]} — both students scored the same.')
+
+                outcome_mask = (
+                    (common_df[f"{name1} Grade"].isin({"F", "AB"}) &
+                     ~common_df[f"{name2} Grade"].isin({"F", "AB"})) |
+                    (common_df[f"{name2} Grade"].isin({"F", "AB"}) &
+                     ~common_df[f"{name1} Grade"].isin({"F", "AB"}))
+                )
+                different_outcomes = common_df[outcome_mask]
+                if not different_outcomes.empty:
+                    st.warning(
+                        f"⚠️ **Different outcomes:** {len(different_outcomes)} common subject(s) "
+                        f"have an F/AB result for one student and a passing result for the other."
+                    )
             else:
                 st.info("No common subjects are available for comparison.")
 
@@ -1191,14 +1215,41 @@ elif st.session_state.page == "Analytics":
                     )
                     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
+                    # ── SEMESTER MOVEMENT HIGHLIGHTS ─────────────────────────
+                    if len(trend) >= 2:
+                        trend = trend.copy()
+                        trend["SGPA Δ"] = trend["SGPA"].diff()
+                        valid_moves = trend.dropna(subset=["SGPA Δ"])
+                        if not valid_moves.empty:
+                            best_move = valid_moves.loc[valid_moves["SGPA Δ"].idxmax()]
+                            worst_move = valid_moves.loc[valid_moves["SGPA Δ"].idxmin()]
+                            best_sem = valid_moves.loc[valid_moves["SGPA Δ"].idxmax(), "Semester"]
+                            worst_sem = valid_moves.loc[valid_moves["SGPA Δ"].idxmin(), "Semester"]
+                            best_delta = float(best_move["SGPA Δ"])
+                            worst_delta = float(worst_move["SGPA Δ"])
+
+                            mcols = st.columns(4)
+                            movement_cards = [
+                                ("Best SGPA", f'{trend["SGPA"].max():.2f}', str(trend.loc[trend["SGPA"].idxmax(), "Semester"])),
+                                ("Lowest SGPA", f'{trend["SGPA"].min():.2f}', str(trend.loc[trend["SGPA"].idxmin(), "Semester"])),
+                                ("Biggest Improvement", f'+{best_delta:.2f}' if best_delta >= 0 else f'{best_delta:.2f}', f"Into {best_sem}"),
+                                ("Biggest Drop", f'{worst_delta:.2f}', f"Into {worst_sem}"),
+                            ]
+                            for col, (label, value, sub) in zip(mcols, movement_cards):
+                                with col:
+                                    st.markdown(
+                                        f'<div class="card"><div class="card-label">{label}</div>'
+                                        f'<div class="card-value">{value}</div><div class="card-sub">{sub}</div></div>',
+                                        unsafe_allow_html=True
+                                    )
+
                 if metrics["sgpa_rows"]:
                     best_sem = max(metrics["sgpa_rows"], key=lambda r: r[1])
                     worst_sem = min(metrics["sgpa_rows"], key=lambda r: r[1])
                     latest_sem = metrics["sgpa_rows"][-1]                    prev_sem = metrics["sgpa_rows"][-2] if len(metrics["sgpa_rows"]) >= 2 else None
 
                     summary_cols = st.columns(3)
-                    summary_items = [
-                        ("Best Semester", f"{best_sem[0]} · {best_sem[1]:.2f}", "Highest recorded SGPA"),
+                    summary_items = [                        ("Best Semester", f"{best_sem[0]} · {best_sem[1]:.2f}", "Highest recorded SGPA"),
                         ("Weakest Semester", f"{worst_sem[0]} · {worst_sem[1]:.2f}", "Lowest recorded SGPA"),
                         ("Latest Movement", "—" if prev_sem is None else f"{latest_sem[1] - prev_sem[1]:+.2f}", "Change from previous semester"),
                     ]
