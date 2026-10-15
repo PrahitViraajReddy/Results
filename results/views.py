@@ -43,6 +43,8 @@ def fmt(value, digits=2):
 
 def student_summary(frame, metrics):
     result = student_metrics(frame, metrics)
+    if result["backlogs"] > 0:
+        result["cgpa"] = None
     result["cgpa_display"] = fmt(result["cgpa"])
     result["avg_display"] = fmt(result["avg_marks"], 1)
     result["credits_display"] = fmt(result["credits"], 0)
@@ -145,6 +147,7 @@ def home(request):
                 summary = student_summary(student, semester_metrics)
                 all_semesters = sorted(df["semester"].astype(str).unique())
                 summary["all_semesters"] = all_semesters
+                summary["attempted_semesters"] = set(student["semester"].astype(str))
                 summary["subjects"] = [{
                     "semester": str(row["semester"]), "code": str(row["subjectCode"]),
                     "name": str(row["subjectName"]), "internal": fmt(row["internal"], 1),
