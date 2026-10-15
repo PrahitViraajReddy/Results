@@ -161,9 +161,9 @@ def make_pdf(summary, rows, metrics):
     normal = ParagraphStyle("ResultNormal", parent=styles["Normal"], fontSize=9)
     story = [
         Paragraph("Academic Results Report", title),
-        Paragraph(f"<b>Name:</b> {summary['name']}", normal),
-        Paragraph(f"<b>Hall Ticket No.:</b> {summary['roll']}", normal),
-        Paragraph(f"<b>Branch:</b> {summary['branch']}", normal),
+        Paragraph(f"<b>Name:</b> {html.escape(str(summary['name']))}", normal),
+        Paragraph(f"<b>Hall Ticket No.:</b> {html.escape(str(summary['roll']))}", normal),
+        Paragraph(f"<b>Branch:</b> {html.escape(str(summary['branch']))}", normal),
         Paragraph(f"<b>Overall CGPA:</b> {summary['cgpa_display']}", normal),
         Spacer(1, 10),
     ]
@@ -178,7 +178,7 @@ def make_pdf(summary, rows, metrics):
         sem = rows[rows["semester"].astype(str) == semester]
         table_data = [["Code", "Subject", "Internal", "External", "Total", "Grade", "Credits"]]
         for _, item in sem.iterrows():
-            table_data.append([str(item["subjectCode"]), html.escape(str(item["subjectName"])),
+            table_data.append([html.escape(str(item["subjectCode"])), html.escape(str(item["subjectName"])),
                 fmt(item["internal"], 1), fmt(item["external"], 1), fmt(item["total"], 1),
                 str(item["grade"]), fmt(item["credits"], 1)])
         table = Table(table_data, colWidths=[20*mm, 63*mm, 16*mm, 16*mm, 16*mm, 16*mm, 15*mm], repeatRows=1)
