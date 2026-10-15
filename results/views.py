@@ -128,6 +128,29 @@ def extended_academic_views(student):
     return {"theory_lab": type_rows, "grade_counts": grade_rows, "semester_performance": semester_rows}
 
 
+def sgpa_movement(student, metrics):
+    roll = str(student["rollNumber"].iloc[0]).strip().upper()
+    semesters = sorted(student["semester"].astype(str).unique(), key=semester_sort_key)
+    rows = []
+    previous = None
+    for sem in semesters:
+        value = metrics.get((roll, sem, "sgpa"))
+        if value is None or pd.isna(value):
+            continue
+        delta = None
+        if previous is not None:
+            a = semester_sort_key(previous["semester"])
+            b = semester_sort_key(sem)
+            consecutive = ((a[0] == b[0] and b[1] == a[1] + 1)
+                           or (b[0] == a[0] + 1 and a[1] == 2 and b[1] == 1))
+            if consecutive:
+                delta = round(float(value) - previous["sgpa"], 2)
+        rows.append({"semester": sem, "sgpa": round(float(value), 2),
+                     "movement": "—" if delta is None else f"{delta:+.2f}"})
+        previous = {"semester": sem, "sgpa": float(value)}
+    return rows
+
+
 def make_pdf(summary, rows, metrics):
     output = io.BytesIO()
     doc = SimpleDocTemplate(output, pagesize=A4, topMargin=18*mm, bottomMargin=18*mm,
@@ -286,8 +309,23 @@ def home(request):
                     "total_a": ra["total"], "total_b": rb["total"]})
             grade_comparison = [{"grade": ra["grade"], "count_a": ra["count"], "count_b": rb["count"]}
                                 for ra, rb in zip(xa["grade_counts"], xb["grade_counts"])]
+            movement_a = {row["semester"]: row for row in sgpa_movement(a, semester_metrics)}
+            movement_b = {row["semester"]: row for row in sgpa_movement(b, semester_metrics)}
+            movement_rows = []
+            for sem in sorted(set(movement_a) | set(movement_b), key=semester_sort_key):
+                ma, mb = movement_a.get(sem, {}), movement_b.get(sem, {})
+                movement_rows.append({"semester": sem, "sgpa_a": ma.get("sgpa", "—"),
+                    "sgpa_b": mb.get("sgpa", "—"), "movement_a": ma.get("movement", "—"),
+                    "movement_b": mb.get("movement", "—")})
+            backlogs_a = [{"semester": str(row["semester"]), "code": str(row["subjectCode"]),
+                "subject": str(row["subjectName"]), "grade": str(row["grade"])}
+                for _, row in a[a["grade"].isin(["F", "AB"])].iterrows()]
+            backlogs_b = [{"semester": str(row["semester"]), "code": str(row["subjectCode"]),
+                "subject": str(row["subjectName"]), "grade": str(row["grade"])}
+                for _, row in b[b["grade"].isin(["F", "AB"])].iterrows()]
             context["comparison"] = {"a": sa, "b": sb, "rows": comparison_rows, "subjects": subjects,
                 "semester_rows": semester_comparison, "type_rows": type_comparison, "grade_rows": grade_comparison,
+                "movement_rows": movement_rows, "backlogs_a": backlogs_a, "backlogs_b": backlogs_b,
                 "roll_a": roll_a, "roll_b": roll_b}
 
     elif page == "Goals" and request.method == "POST" and not context["error"]:
