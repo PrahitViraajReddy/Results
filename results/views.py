@@ -286,12 +286,69 @@ def home(request):
 
 @require_GET
 def export_data(request, kind):
-    if kind not in {"csv", "xlsx", "pdf"}:
+    if kind not in {"csv", "xlsx", "pdf", "compare-csv", "compare-xlsx"}:
         raise Http404
     try:
         df, semester_metrics = dataset()
     except Exception:
         return HttpResponse("Workbook unavailable.", status=503)
+    if kind in {"compare-csv", "compare-xlsx"}:
+        roll_a = "".join(request.GET.get("roll_a", "").split()).upper()
+        roll_b = "".join(request.GET.get("roll_b", "").split()).upper()
+        if (not roll_a or not roll_b or len(roll_a) > 30 or len(roll_b) > 30
+                or not roll_a.isalnum() or not roll_b.isalnum() or roll_a == roll_b):
+            return HttpResponse("Two different valid hall-ticket numbers are required.", status=400)
+        a = df[df["rollNumber"].astype(str).str.upper() == roll_a].copy()
+        b = df[df["rollNumber"].astype(str).str.upper() == roll_b].copy()
+        if a.empty or b.empty:
+            return HttpResponse("One or both student records were not found.", status=404)
+        sa, sb = student_summary(a, semester_metrics), student_summary(b, semester_metrics)
+        metric_rows = pd.DataFrame([
+            {"Metric": "CGPA", roll_a: sa["cgpa"], roll_b: sb["cgpa"]},
+            {"Metric": "Average Marks", roll_a: sa["avg_marks"], roll_b: sb["avg_marks"]},
+            {"Metric": "Pass %", roll_a: sa["pass_rate"], roll_b: sb["pass_rate"]},
+            {"Metric": "Recorded Credits", roll_a: sa["credits"], roll_b: sb["credits"]},
+            {"Metric": "Backlog Records", roll_a: sa["backlogs"], roll_b: sb["backlogs"]},
+        ])
+        xa, xb = extended_academic_views(a), extended_academic_views(b)
+        type_rows = pd.DataFrame(xa["theory_lab"]).merge(
+            pd.DataFrame(xb["theory_lab"]), on="type", suffixes=(f"_{roll_a}", f"_{roll_b}"))
+        grade_rows = pd.DataFrame(xa["grade_counts"]).merge(
+            pd.DataFrame(xb["grade_counts"]), on="grade", suffixes=(f"_{roll_a}", f"_{roll_b}"))
+        sem_a = pd.DataFrame(xa["semester_performance"]).rename(columns={
+            "average": f"average_{roll_a}", "pass_rate": f"pass_rate_{roll_a}", "backlogs": f"backlogs_{roll_a}"})
+        sem_b = pd.DataFrame(xb["semester_performance"]).rename(columns={
+            "average": f"average_{roll_b}", "pass_rate": f"pass_rate_{roll_b}", "backlogs": f"backlogs_{roll_b}"})
+        sem_rows = sem_a.merge(sem_b, on="semester", how="outer")
+        common = a[["semester", "subjectCode", "subjectName", "total", "grade"]].merge(
+            b[["semester", "subjectCode", "subjectName", "total", "grade"]],
+            on=["semester", "subjectCode", "subjectName"], how="inner", suffixes=(f"_{roll_a}", f"_{roll_b}"))
+        frames = {
+            "Academic Performance": metric_rows,
+            "Semester Performance": sem_rows,
+            "Theory vs Lab": type_rows,
+            "Grades & Backlogs": grade_rows,
+            "Common Subjects": common,
+        }
+        filename = f"{roll_a}_vs_{roll_b}_comparison"
+        if kind == "compare-csv":
+            combined = []
+            for section, frame in frames.items():
+                piece = frame.copy()
+                piece.insert(0, "Section", section)
+                combined.append(piece)
+            response = HttpResponse(pd.concat(combined, ignore_index=True, sort=False).to_csv(index=False),
+                                    content_type="text/csv; charset=utf-8")
+            response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
+            return response
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            for sheet, frame in frames.items():
+                frame.to_excel(writer, index=False, sheet_name=sheet[:31])
+        response = HttpResponse(output.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
+        return response
+
     roll = "".join(request.GET.get("roll", "").split()).upper()
     if not roll or len(roll) > 30 or not roll.isalnum():
         return HttpResponse("A valid hall-ticket number is required.", status=400)
