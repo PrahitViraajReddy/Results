@@ -65,6 +65,48 @@ def student_summary(frame, metrics):
     return result
 
 
+PRACTICAL_CODES = {
+    "CS106ES", "ME104ES", "PH107BS", "CS108ES", "EN109HS", "ME203ES",
+    "CS206ES", "CH207BS", "EE208ES", "CS209ES", "AD306PC", "AD307PC",
+    "AD308PC", "AD309PC", "AD406PC", "AD407PC", "AD409PC", "AD505PC",
+    "AD506PC", "AD507PC", "AD604PC", "AD605PC",
+}
+
+
+def course_type(row):
+    code = str(row.get("subjectCode", "")).strip().upper()
+    name = str(row.get("subjectName", "")).strip().upper()
+    return "Lab" if code in PRACTICAL_CODES or "LAB" in name or "LABORATORY" in name else "Theory"
+
+
+def extended_academic_views(student):
+    data = student.copy()
+    data["courseType"] = data.apply(course_type, axis=1)
+    type_rows = []
+    for label in ("Theory", "Lab"):
+        part = data[data["courseType"] == label]
+        type_rows.append({
+            "type": label,
+            "internal": fmt(part["internal"].mean(), 1) if not part.empty else "—",
+            "external": fmt(part["external"].mean(), 1) if not part.empty else "—",
+            "total": fmt(part["total"].mean(), 1) if not part.empty else "—",
+            "count": len(part),
+        })
+    grade_order = ["O", "A+", "A", "B+", "B", "C", "P", "F", "AB"]
+    grade_rows = [{"grade": grade, "count": int((data["grade"] == grade).sum())} for grade in grade_order]
+    semester_rows = []
+    for sem in sorted(data["semester"].astype(str).unique(), key=lambda x: tuple(int(p) if p.isdigit() else p for p in x.replace("_", "-").split("-"))):
+        part = data[data["semester"].astype(str) == sem]
+        passed = part["grade"].isin(PASS_GRADES)
+        semester_rows.append({
+            "semester": sem,
+            "average": fmt(part["total"].mean(), 1),
+            "pass_rate": fmt(passed.mean() * 100, 1) + "%",
+            "backlogs": int((~passed).sum()),
+        })
+    return {"theory_lab": type_rows, "grade_counts": grade_rows, "semester_performance": semester_rows}
+
+
 def make_pdf(summary, rows, metrics):
     output = io.BytesIO()
     doc = SimpleDocTemplate(output, pagesize=A4, topMargin=18*mm, bottomMargin=18*mm,
@@ -148,6 +190,7 @@ def home(request):
                 all_semesters = sorted(df["semester"].astype(str).unique())
                 summary["all_semesters"] = all_semesters
                 summary["attempted_semesters"] = set(student["semester"].astype(str))
+                summary.update(extended_academic_views(student))
                 summary["subjects"] = [{
                     "semester": str(row["semester"]), "code": str(row["subjectCode"]),
                     "name": str(row["subjectName"]), "internal": fmt(row["internal"], 1),
@@ -164,6 +207,7 @@ def home(request):
             context["error"] = "Enter a valid hall-ticket number with available results."
         else:
             summary = student_summary(student, semester_metrics)
+            summary.update(extended_academic_views(student))
             summary["subjects"] = [{
                 "semester": str(row["semester"]), "subject": str(row["subjectName"]),
                 "code": str(row["subjectCode"]), "total": fmt(row["total"], 1),
