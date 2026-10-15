@@ -19,3 +19,9 @@ Thumbs.db
 # Local secrets / environment files
 .env
 .env.*
+
+# Django runtime / private academic data
+db.sqlite3
+staticfiles/
+results.xlsx
+*.log
