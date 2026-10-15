@@ -388,8 +388,17 @@ def export_data(request, kind):
         common = a[["semester", "subjectCode", "subjectName", "total", "grade"]].merge(
             b[["semester", "subjectCode", "subjectName", "total", "grade"]],
             on=["semester", "subjectCode", "subjectName"], how="inner", suffixes=(f"_{roll_a}", f"_{roll_b}"))
+        movement_a = {row["semester"]: row for row in sgpa_movement(a, semester_metrics)}
+        movement_b = {row["semester"]: row for row in sgpa_movement(b, semester_metrics)}
+        movement_rows = []
+        for sem in sorted(set(movement_a) | set(movement_b), key=semester_sort_key):
+            ma, mb = movement_a.get(sem, {}), movement_b.get(sem, {})
+            movement_rows.append({"Semester": sem, f"{roll_a} SGPA": ma.get("sgpa"),
+                f"{roll_a} Movement": ma.get("movement"), f"{roll_b} SGPA": mb.get("sgpa"),
+                f"{roll_b} Movement": mb.get("movement")})
         frames = {
             "Academic Performance": metric_rows,
+            "SGPA Movement": pd.DataFrame(movement_rows),
             "Semester Performance": sem_rows,
             "Theory vs Lab": type_rows,
             "Grades & Backlogs": grade_rows,
