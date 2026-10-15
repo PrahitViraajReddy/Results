@@ -71,7 +71,7 @@ def load_academic_data(path="results.xlsx"):
 
 def student_metrics(student, semester_metrics):
     roll = normalize_hall_ticket(student["rollNumber"].iloc[0])
-    semesters = sorted(student["semester"].unique(), key=lambda x: str(x))
+    semesters = sorted(student["semester"].astype(str).unique(), key=semester_sort_key)
     sgpa_rows = []
 
     for sem in semesters:
