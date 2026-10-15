@@ -43,6 +43,7 @@ Set the path to a workbook that you are authorized to use. Keep the workbook out
 $env:RESULTS_WORKBOOK="C:\private-data\results.xlsx"
 $env:DJANGO_SECRET_KEY="replace-with-a-long-random-secret"
 $env:DJANGO_DEBUG="True"
+python manage.py migrate
 python manage.py check
 python manage.py runserver
 ```
@@ -69,7 +70,7 @@ Set these environment variables in your hosting provider:
 - `RESULTS_WORKBOOK`: absolute path to a private workbook mounted/provisioned at deploy time.
 - `DJANGO_SECURE_SSL_REDIRECT=True` when HTTPS is configured.
 
-Run `python manage.py check --deploy` before production deployment and configure HTTPS at the host/proxy. Do not make the workbook publicly downloadable. Do not assume the existing Streamlit deployment will run Django; deploy this branch to a Django-capable host separately.
+Run `python manage.py migrate` as a release step and `python manage.py check --deploy` before production deployment and configure HTTPS at the host/proxy. Do not make the workbook publicly downloadable. Do not assume the existing Streamlit deployment will run Django; deploy this branch to a Django-capable host separately.
 
 ## Security notes
 
