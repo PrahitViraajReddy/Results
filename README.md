@@ -1,166 +1,100 @@
-# 🎓 Results App
+# 🎓 Results App — Django migration
 
-**Results App** is a student-focused academic performance platform built with **Python, Pandas, OpenPyXL, Streamlit, Plotly, and ReportLab**.
+A student-facing academic results portal migrated from Streamlit to Django while retaining the existing visual direction: dark navy sidebar, warm ivory background, gold accents, DM Sans / DM Serif typography, responsive cards, and chart-based analytics.
 
-It converts semester-wise Excel result data into a structured workflow for **result lookup, personal academic analytics, student-to-student comparison, what-if CGPA planning, visualization, and reporting**.
+## Current migration status
 
-## 🌐 Live Demo
+This branch replaces the Streamlit runtime with Django views and templates. It preserves the main workflows:
+- Hall-ticket result lookup
+- Semester/subject marks, grades, credits, SGPA/CGPA summary
+- Personal analytics, performance insights, SGPA trend and subject summaries
+- Two-student comparison
+- CGPA what-if scenarios and future-SGPA projections
+- PDF, CSV and Excel export for an individual student's results
 
-[Open the deployed Results App](https://academic-results.streamlit.app/)
+The migration is an in-progress port. Validate parity against the original app and workbook before deploying or merging; do not assume pixel-perfect or feature-perfect parity until the test checklist below passes.
 
-## 🎯 Project Focus
+## Stack
 
-This is a **student platform**, not a college/admin analytics dashboard.
+- Django 5.2
+- Pandas and OpenPyXL for workbook parsing
+- Plotly.js for charts
+- ReportLab for PDF reports
+- Gunicorn for production WSGI serving
 
-The application is designed around a simple distinction:
-- **Results** → What did I score?
-- **My Analytics** → How am I performing, where am I improving/declining, and what should I investigate?
-- **Comparison** → How do two students differ across comparable academic metrics?
-- **Goals** → What future SGPA would be needed to reach a target CGPA?
+## Run locally
 
-All academic calculations are deterministic and derived from the supplied workbook.
-
-## ✨ Features
-
-### 📋 Results
-- Hall-ticket based result lookup
-- Semester-wise subject results
-- Internal, external and total marks
-- Grade and credit information
-- SGPA/CGPA display
-- Academic performance summary
-- PDF result/report export
-
-### 📊 My Analytics
-- CGPA
-- Average marks
-- Grade-point average
-- Pass percentage
-- Recorded and passed credits
-- SGPA volatility and range
-- Best and weakest semester
-- Semester-to-semester movement
-- Strongest subjects
-- Subjects needing attention
-- Semester performance breakdown
-- Subject-level marks analysis
-- Theory vs Lab internal/external averages
-- Grade and backlog summary
-- What-if CGPA scenarios
-- Target CGPA planning
-- Internal vs external performance analysis
-
-**Important:** missing semesters are not treated as zero. Semester movement is calculated only when the recorded semesters are actually consecutive.
-
-### ⚖️ Comparison
-- CGPA
-- Average marks
-- Pass percentage
-- Recorded credits
-- F/AB backlog records
-- Semester SGPA
-- Semester movement
-- Semester performance
-- Theory vs Lab performance
-- Common-subject marks and grades
-- Subject-wise marks gaps
-- Grade/backlog comparison
-
-If a student has no recorded result for a semester, that missing semester is preserved as missing rather than being converted into a zero.
-
-### 🎯 Goal & What-if Analysis
-- Enter future credits to model
-- Test future SGPA scenarios
-- Project final CGPA
-- Set a target CGPA
-- Calculate the required average future SGPA
-- Identify targets that are mathematically unreachable under a 10-point SGPA scale
-
-The application does **not** assume a remaining-credit total when the workbook does not provide one.
-
-### 📤 Export
-- CSV analytics export
-- Excel analytics/comparison exports
-- Existing result-report/PDF workflow
-
-## 🧮 Academic Analytics Logic
-
-### SGPA
-**SGPA = Σ(Grade Point × Credits) / Σ(Credits)**
-
-### CGPA
-**CGPA = Σ(Semester SGPA × Semester Credits) / Σ(Total Semester Credits)**
-
-Workbook-provided semester SGPA and credit values are preferred where available.
-
-### Grade Handling
-The application uses recorded grade information and distinguishes passing grades from **F/AB** records for backlog analysis.
-
-### Missing Semester Handling
-A missing result is **not** interpreted as a zero.
-
-For semester movement:
-- `1-1 → 1-2` is consecutive
-- `1-2 → 2-1` is consecutive
-- `3-1 → 4-1` is **not** consecutive if `3-2` is missing
-
-This prevents misleading improvement/drop calculations.
-
-## 🗂️ Application Structure
-
-The main application remains in `ui.py`.
-
-Supporting academic analytics logic is kept in:
-- `academic_analytics.py`
-- `results.xlsx`
-- `requirements.txt`
-
-The application uses the existing Streamlit UI rather than separate analytics pages, keeping the original Results experience intact while extending it with student-focused analytics and comparison workflows.
-
-## 🛠️ Tech Stack
-
-| Technology | Purpose |
-|---|---|
-| **Python** | Application logic and academic calculations |
-| **Pandas** | Data processing and transformation |
-| **OpenPyXL** | Excel workbook handling |
-| **Streamlit** | Interactive web application |
-| **Plotly** | Interactive visualizations |
-| **ReportLab** | PDF report generation |
-
-## 🚀 Run Locally
+Use Python 3.11–3.13 for the smoothest compatibility with the pinned Django range.
 
 ```bash
-git clone https://github.com/PrahitViraajReddy/Results.git
-cd Results
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
+
 pip install -r requirements.txt
-streamlit run ui.py
 ```
 
-## 📁 Project Structure
+Set the path to a workbook that you are authorized to use. Keep the workbook outside the public repository if it contains real student records.
 
-```text
-Results/
-├── ui.py
-├── academic_analytics.py
-├── results.xlsx
-├── requirements.txt
-└── README.md
+**PowerShell**
+```powershell
+$env:RESULTS_WORKBOOK="C:\private-data\results.xlsx"
+$env:DJANGO_SECRET_KEY="replace-with-a-long-random-secret"
+$env:DJANGO_DEBUG="True"
+python manage.py check
+python manage.py runserver
 ```
 
-## 🔐 Data Privacy
+**macOS/Linux**
+```bash
+export RESULTS_WORKBOOK="/private-data/results.xlsx"
+export DJANGO_SECRET_KEY="replace-with-a-long-random-secret"
+export DJANGO_DEBUG="True"
+python manage.py check
+python manage.py runserver
+```
 
-The application processes student-level academic records.
+Open `http://127.0.0.1:8000/`.
 
-If deploying publicly, use synthetic, anonymized, or appropriately authorized academic data. Do not publish real student records without authorization.
+The workbook is expected to contain a `Summary` sheet with `RollNumber`, `Name`, and `Branch`, plus semester sheets following the current workbook layout.
 
-## 👤 Author
+## Deployment configuration
 
-**Prahit Viraaj Reddy**
+Set these environment variables in your hosting provider:
+- `DJANGO_SECRET_KEY`: a long, random secret; never commit it.
+- `DJANGO_DEBUG=False`
+- `DJANGO_ALLOWED_HOSTS`: comma-separated hostnames.
+- `RESULTS_WORKBOOK`: absolute path to a private workbook mounted/provisioned at deploy time.
+- `DJANGO_SECURE_SSL_REDIRECT=True` when HTTPS is configured.
 
-- GitHub: [@PrahitViraajReddy](https://github.com/PrahitViraajReddy)
-- Live App: [academic-results.streamlit.app](https://academic-results.streamlit.app/)
+Run `python manage.py check --deploy` before production deployment and configure HTTPS at the host/proxy. Do not make the workbook publicly downloadable. Do not assume the existing Streamlit deployment will run Django; deploy this branch to a Django-capable host separately.
 
-## ⚠️ Disclaimer
+## Security notes
 
-This is an educational and portfolio project. Analytics depend on the quality, completeness, and structure of the supplied academic workbook.
+Django provides CSRF middleware, secure session-cookie settings in production mode, host validation, and escaped template output by default. This does **not** by itself guarantee that the application is secure. The current public hall-ticket lookup model still allows someone who knows a valid number to view that student's data. If results must be private to each student, add authenticated accounts and enforce per-student authorization before production.
+
+The in-process/session throttle is only a lightweight guard, not a substitute for a shared production rate limiter. Configure rate limiting at the reverse proxy or use a shared cache/backend for multiple workers.
+
+If a real `results.xlsx` was ever committed to a public repository, deleting it from the current branch does not erase prior Git history, forks, or existing copies. Rotate/restrict access as appropriate and consider history cleanup only with a deliberate repository-wide plan.
+
+## Validation checklist
+
+Before replacing the current live app:
+1. Run `python manage.py check`.
+2. Test valid and invalid hall-ticket lookups.
+3. Compare every semester's subjects, marks, grade, credits and workbook SGPA against the existing app.
+4. Check that missing semesters display **Not Applied for Exams**, not zero.
+5. Verify CGPA/backlog rules and goal calculations against known examples.
+6. Compare two students across semester movement, common subjects, grades/backlogs and theory/lab performance.
+7. Open each PDF/CSV/Excel export and compare contents.
+8. Test mobile layout, CSRF behavior, rate limiting, production settings and workbook privacy.
+
+## Project structure
+
+- `manage.py` — Django command entry point
+- `results_site/` — settings, URL configuration, WSGI/ASGI
+- `results/` — request handlers and Django templates
+- `academic_analytics.py` — existing workbook parsing and deterministic academic calculations
+- `results.xlsx` — **should be supplied privately at runtime**, not published with real student data
