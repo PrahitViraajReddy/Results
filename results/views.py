@@ -188,7 +188,20 @@ def make_pdf(summary, rows, metrics):
             ("FONTSIZE",(0,0),(-1,-1),8), ("GRID",(0,0),(-1,-1),0.4,colors.HexColor("#e0dbd0")),
             ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white,colors.HexColor("#f5f3ee")]),
         ]))
-        story.extend([table, Spacer(1, 8)])
+        story.append(table)
+        roll_key = str(summary["roll"]).strip().upper()
+        workbook_sgpa = metrics.get((roll_key, semester, "sgpa"))
+        sem_grades = sem["grade"].astype(str).str.strip().str.upper()
+        if workbook_sgpa is not None and pd.notna(workbook_sgpa):
+            story.append(Paragraph(f"<b>Semester {html.escape(semester)} SGPA: {float(workbook_sgpa):.2f}</b>", normal))
+        elif sem_grades.isin(PASS_GRADES).all() and pd.to_numeric(sem["credits"], errors="coerce").fillna(0).sum() > 0:
+            sem_points = sem_grades.map(GRADE_POINTS)
+            sem_credits_values = pd.to_numeric(sem["credits"], errors="coerce").fillna(0)
+            sgpa_value = (sem_points * sem_credits_values).sum() / sem_credits_values.sum()
+            story.append(Paragraph(f"<b>Semester {html.escape(semester)} SGPA: {sgpa_value:.2f}</b>", normal))
+        else:
+            story.append(Paragraph(f"<b>Semester {html.escape(semester)}: Backlog(s) present</b>", normal))
+        story.append(Spacer(1, 8))
     doc.build(story)
     output.seek(0)
     return output.getvalue()
