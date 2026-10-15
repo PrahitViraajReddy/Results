@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Results App · Academic Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+:root{--ink:#1a1a2e;--navy:#22223f;--gold:#c8a84b;--pale:#f5f3ee;--muted:#9090b0;--line:#e8e4da;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--pale);color:var(--ink);font-family:'DM Sans',sans-serif}
+a{color:inherit;text-decoration:none}button,input{font:inherit}
+.shell{min-height:100vh;display:grid;grid-template-columns:245px minmax(0,1fr)}
+.sidebar{background:var(--ink);color:#c8c8e8;padding:24px 18px;display:flex;flex-direction:column;gap:12px}
+.logo{font:1.6rem 'DM Serif Display',serif;color:#e8c97e;text-align:center;margin-top:8px}.sub{font-size:.68rem;text-transform:uppercase;letter-spacing:1.6px;color:#7777a4;text-align:center;margin-bottom:28px}
+.nav-link{display:block;border-radius:10px;padding:12px 14px;color:#c8c8e8;font-size:.92rem;transition:.18s}
+.nav-link:hover,.nav-link.active{background:#2c2c4c;color:#e8c97e;border:1px solid #454566}
+.sidebar-foot{margin-top:auto;text-align:center;font-size:.75rem;color:#7777a4;line-height:1.7;padding-top:26px}
+main{padding:36px clamp(18px,4vw,58px);min-width:0;max-width:1600px;width:100%;margin:auto}
+.page-title{font:2rem 'DM Serif Display',serif;margin:0 0 5px}.page-sub{color:var(--muted);font-size:.9rem;margin:0 0 28px}
+.hero{min-height:75vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:36px 12px}
+.pill{font-size:.7rem;letter-spacing:2.5px;text-transform:uppercase;color:#b49337;border:1px solid #e8c97e66;background:#e8c97e14;border-radius:30px;padding:7px 17px;margin-bottom:22px}
+.hero h1{font:clamp(2.6rem,6vw,4.4rem)/1.1 'DM Serif Display',serif;margin:0 0 18px;max-width:760px}.gold{color:var(--gold)}
+.hero p{max-width:470px;line-height:1.8;color:#6a6a9a;margin:0 0 34px}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:11px;padding:12px 20px;background:linear-gradient(135deg,var(--ink),#303052);color:#fff;font-weight:600;cursor:pointer;transition:.18s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px #0002}.btn.secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:16px;box-shadow:0 2px 16px #00000008}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.metric{padding:20px 22px}.metric-label{font-size:.7rem;text-transform:uppercase;letter-spacing:1.3px;color:var(--muted);margin-bottom:8px}.metric-value{font:1.8rem 'DM Serif Display',serif}.metric-sub{font-size:.8rem;color:#a0a0bc;margin-top:4px}
+.field{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}.field label{font-size:.84rem;color:#62628b;font-weight:600}.field input{border-radius:10px;border:1.5px solid #e0dbd0;padding:13px 15px;background:#fff;color:var(--ink);outline:none;width:100%}.field input:focus{border-color:var(--gold);box-shadow:0 0 0 3px #c8a84b26}
+.form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.sec-label{font-size:.7rem;text-transform:uppercase;letter-spacing:1.7px;color:var(--muted);margin:24px 0 12px}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}table{border-collapse:collapse;width:100%;font-size:.86rem;white-space:nowrap}th{background:var(--ink);color:#fff;text-align:left;font-weight:600}th,td{padding:12px 14px;border-bottom:1px solid #f0ece4}tbody tr:nth-child(even){background:#faf9f6}tbody tr:last-child td{border-bottom:0}
+.cgpa-card{background:linear-gradient(135deg,var(--ink),#303052);color:#fff;border-radius:16px;padding:28px 32px;display:flex;justify-content:space-between;align-items:center;gap:20px;margin:20px 0}.cgpa-label{font-size:.7rem;letter-spacing:1.7px;text-transform:uppercase;color:#9999c4}.cgpa-value{font:3.2rem 'DM Serif Display',serif;color:#e8c97e}
+.alert{padding:14px 16px;border-radius:10px;margin-bottom:18px;background:#fff0ee;color:#9d3434;border:1px solid #f0c9c5}.success{background:#edf7ed;color:#256b37;border-color:#cce8cf}
+.chip{display:inline-block;padding:5px 9px;border-radius:7px;background:#f5f3ee;border:1px solid var(--line);font-size:.78rem;margin:2px}
+.insight{padding:12px 0;border-bottom:1px solid #f0ece4;color:#5d5d80}.insight:last-child{border-bottom:0}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.chart{min-height:300px;width:100%}
+@media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.shell{grid-template-columns:210px minmax(0,1fr)}main{padding:26px 22px}}
+@media(max-width:700px){.shell{display:block}.sidebar{padding:12px;display:block}.logo{margin:2px 0}.sub{margin:0 0 10px}.nav{display:flex;gap:5px;overflow:auto}.nav-link{white-space:nowrap;padding:10px}.sidebar-foot{display:none}main{padding:22px 14px}.grid,.grid.two,.form-row{grid-template-columns:1fr}.hero{min-height:58vh}.hero h1{font-size:2.5rem}.cgpa-card{padding:20px;align-items:flex-start;flex-direction:column}.cgpa-value{font-size:2.5rem}.card{padding:18px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<a href="{% url 'results:home' %}" class="logo">🎓 Results</a>
+<div class="sub">Academic performance</div>
+<nav class="nav">
+<a class="nav-link {% if page == 'Home' %}active{% endif %}" href="{% url 'results:home' %}">⌂ &nbsp; Home</a>
+<a class="nav-link {% if page == 'Results' %}active{% endif %}" href="?page=Results">▤ &nbsp; Results</a>
+<a class="nav-link {% if page == 'My Analytics' %}active{% endif %}" href="?page=My%20Analytics">◷ &nbsp; My Analytics</a>
+<a class="nav-link {% if page == 'Comparison' %}active{% endif %}" href="?page=Comparison">⚖ &nbsp; Comparison</a>
+<a class="nav-link {% if page == 'Goals' %}active{% endif %}" href="?page=Goals">◎ &nbsp; Goals & scenarios</a>
+</nav>
+<div class="sidebar-foot">Results Portal<br>Academic insights, clearly presented</div>
+</aside>
+<main>
+{% if error %}<div class="alert">{{ error }}</div>{% endif %}
+{% if page == "Home" %}
+<section class="hero">
+<div class="pill">Your academic journey, understood</div>
+<h1>Every result tells<br>a <span class="gold">story.</span></h1>
+<p>Explore semester results, understand your academic progress, compare performance, and plan your next CGPA milestone.</p>
+<div class="actions"><a class="btn" href="?page=Results">View results &nbsp; →</a><a class="btn secondary" href="?page=My%20Analytics">Explore analytics</a></div>
+</section>
+<div class="grid">
+<div class="card metric"><div class="metric-label">Results</div><div class="metric-value">Semester-wise</div><div class="metric-sub">Subjects, marks, grades and credits</div></div>
+<div class="card metric"><div class="metric-label">Analytics</div><div class="metric-value">Personal</div><div class="metric-sub">Strengths and areas to improve</div></div>
+<div class="card metric"><div class="metric-label">Comparison</div><div class="metric-value">Side by side</div><div class="metric-sub">Common subjects and academic metrics</div></div>
+<div class="card metric"><div class="metric-label">Goals</div><div class="metric-value">What-if</div><div class="metric-sub">Model future SGPA and target CGPA</div></div>
+</div>
+{% elif page == "Results" %}
+<h1 class="page-title">Academic Results</h1><p class="page-sub">Look up semester-wise marks and export your report.</p>
+<div class="card"><form method="post">{% csrf_token %}<input type="hidden" name="page" value="Results">
+<div class="field"><label for="roll_number">Hall-ticket number</label><input id="roll_number" name="roll_number" maxlength="30" autocomplete="off" placeholder="Enter your hall-ticket number" value="{{ default_roll }}" required></div>
+<button class="btn" type="submit">Find results &nbsp; →</button></form></div>
+{% if result %}
+<div class="cgpa-card"><div><div class="cgpa-label">Academic profile</div><h2 style="margin:7px 0 4px;font:1.5rem 'DM Serif Display',serif">{{ result.name }}</h2><div style="color:#aaaaca">{{ result.roll }} · {{ result.branch }}</div></div><div><div class="cgpa-label">Overall CGPA</div><div class="cgpa-value">{{ result.cgpa_display }}</div></div></div>
+<div class="grid">
+<div class="card metric"><div class="metric-label">Average marks</div><div class="metric-value">{{ result.avg_display }}</div></div>
+<div class="card metric"><div class="metric-label">Pass percentage</div><div class="metric-value">{{ result.pass_display }}</div></div>
+<div class="card metric"><div class="metric-label">Recorded credits</div><div class="metric-value">{{ result.credits_display }}</div></div>
+<div class="card metric"><div class="metric-label">F/AB records</div><div class="metric-value">{{ result.backlogs }}</div></div>
+</div>
+<div class="sec-label">Semester-wise subject results</div>
+<div class="table-wrap"><table><thead><tr><th>Semester</th><th>Code</th><th>Subject</th><th>Internal</th><th>External</th><th>Total</th><th>Grade</th><th>Credits</th></tr></thead><tbody>{% for s in result.subjects %}<tr><td>{{ s.semester }}</td><td>{{ s.code }}</td><td>{{ s.name }}</td><td>{{ s.internal }}</td><td>{{ s.external }}</td><td>{{ s.total }}</td><td>{{ s.grade }}</td><td>{{ s.credits }}</td></tr>{% endfor %}</tbody></table></div>
+<div class="actions"><a class="btn" href="{% url 'results:export' 'pdf' %}?roll={{ result.roll|urlencode }}">Export PDF</a><a class="btn secondary" href="{% url 'results:export' 'csv' %}?roll={{ result.roll|urlencode }}">Export CSV</a><a class="btn secondary" href="{% url 'results:export' 'xlsx' %}?roll={{ result.roll|urlencode }}">Export Excel</a></div>
+{% endif %}
+{% elif page == "My Analytics" %}
+<h1 class="page-title">My Analytics</h1><p class="page-sub">Understand performance trends, subject strengths, and areas needing attention.</p>
+<div class="card"><form method="post">{% csrf_token %}<input type="hidden" name="page" value="My Analytics"><div class="field"><label for="analytics_roll">Hall-ticket number</label><input id="analytics_roll" name="roll_number" maxlength="30" value="{{ default_roll }}" placeholder="Enter hall-ticket number" required></div><button class="btn">Analyze performance &nbsp; →</button></form></div>
+{% if analytics %}
+<div class="grid">
+<div class="card metric"><div class="metric-label">CGPA</div><div class="metric-value">{{ analytics.cgpa_display }}</div></div><div class="card metric"><div class="metric-label">Average marks</div><div class="metric-value">{{ analytics.avg_display }}</div></div><div class="card metric"><div class="metric-label">Pass percentage</div><div class="metric-value">{{ analytics.pass_display }}</div></div><div class="card metric"><div class="metric-label">Backlog records</div><div class="metric-value">{{ analytics.backlogs }}</div></div>
+</div>
+<div class="grid two">
+<div class="card"><div class="sec-label">Performance insights</div>{% for insight in analytics.insights %}<div class="insight">{{ insight }}</div>{% endfor %}</div>
+<div class="card"><div class="sec-label">Semester SGPA</div><div id="sgpa-chart" class="chart"></div></div>
+</div>
+<div class="grid two"><div class="card"><div class="sec-label">Strongest recorded subjects</div>{% for item in analytics.best_subject_rows %}<div class="insight">{{ item.subject }} <span style="float:right;font-weight:700">{{ item.marks }}</span></div>{% empty %}<p>No subject data available.</p>{% endfor %}</div><div class="card"><div class="sec-label">Subjects needing attention</div>{% for item in analytics.weak_subject_rows %}<div class="insight">{{ item.subject }} <span style="float:right;font-weight:700">{{ item.marks }}</span></div>{% empty %}<p>No subject data available.</p>{% endfor %}</div></div>
+<div class="sec-label">Subject-level analysis</div><div class="table-wrap"><table><thead><tr><th>Semester</th><th>Code</th><th>Subject</th><th>Internal</th><th>External</th><th>Total</th><th>Grade</th></tr></thead><tbody>{% for s in analytics.subjects %}<tr><td>{{ s.semester }}</td><td>{{ s.code }}</td><td>{{ s.subject }}</td><td>{{ s.internal }}</td><td>{{ s.external }}</td><td>{{ s.total }}</td><td>{{ s.grade }}</td></tr>{% endfor %}</tbody></table></div>
+<script>const semRows={{ analytics.semester_rows|json_script:"sem-data" }};</script>
+{{ analytics.semester_rows|json_script:"sgpa-data" }}
+<script>
+(()=>{const rows=JSON.parse(document.getElementById('sgpa-data').textContent);const el=document.getElementById('sgpa-chart');if(el&&rows.length){Plotly.newPlot(el,[{x:rows.map(r=>'Sem '+r.semester),y:rows.map(r=>Number(r.sgpa)),type:'scatter',mode:'lines+markers+text',text:rows.map(r=>r.sgpa),textposition:'top center',line:{color:'#c8a84b',width:3},marker:{size:8}}],{margin:{t:15,r:15,b:45,l:35},paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'DM Sans',color:'#1a1a2e'},yaxis:{range:[0,10],gridcolor:'#eeeae2'},xaxis:{gridcolor:'#eeeae2'}},{displayModeBar:false,responsive:true})}})();
+</script>
+<div class="actions"><a class="btn" href="{% url 'results:export' 'csv' %}?roll={{ analytics.roll|urlencode }}">Export analytics CSV</a><a class="btn secondary" href="{% url 'results:export' 'xlsx' %}?roll={{ analytics.roll|urlencode }}">Export Excel</a></div>
+{% endif %}
+{% elif page == "Comparison" %}
+<h1 class="page-title">Student Comparison</h1><p class="page-sub">Compare academic metrics and subject performance side by side.</p>
+<div class="card"><form method="post">{% csrf_token %}<input type="hidden" name="page" value="Comparison"><div class="form-row"><div class="field"><label for="roll_a">Student A · hall-ticket number</label><input id="roll_a" name="roll_a" maxlength="30" required></div><div class="field"><label for="roll_b">Student B · hall-ticket number</label><input id="roll_b" name="roll_b" maxlength="30" required></div></div><button class="btn">Compare students &nbsp; →</button></form></div>
+{% if comparison %}
+<div class="grid two"><div class="card"><div class="metric-label">Student A</div><h2 style="font:1.4rem 'DM Serif Display',serif">{{ comparison.a.name }}</h2><div>{{ comparison.a.roll }} · {{ comparison.a.branch }}</div></div><div class="card"><div class="metric-label">Student B</div><h2 style="font:1.4rem 'DM Serif Display',serif">{{ comparison.b.name }}</h2><div>{{ comparison.b.roll }} · {{ comparison.b.branch }}</div></div></div>
+<div class="table-wrap"><table><thead><tr><th>Metric</th><th>Student A</th><th>Student B</th></tr></thead><tbody>{% for row in comparison.rows %}<tr><td>{{ row.label }}</td><td>{{ row.a }}</td><td>{{ row.b }}</td></tr>{% endfor %}</tbody></table></div>
+<div class="sec-label">Common-subject comparison</div><div class="table-wrap"><table><thead><tr><th>Semester</th><th>Subject</th><th>A marks</th><th>A grade</th><th>B marks</th><th>B grade</th><th>Marks gap (A−B)</th></tr></thead><tbody>{% for s in comparison.subjects %}<tr><td>{{ s.semester }}</td><td>{{ s.subject }}</td><td>{{ s.a }}</td><td>{{ s.grade_a }}</td><td>{{ s.b }}</td><td>{{ s.grade_b }}</td><td>{{ s.gap }}</td></tr>{% empty %}<tr><td colspan="7">No common subject records were found.</td></tr>{% endfor %}</tbody></table></div>
+{% endif %}
+{% elif page == "Goals" %}
+<h1 class="page-title">Goal & Scenario Analysis</h1><p class="page-sub">Model future SGPA outcomes and calculate the average SGPA needed for a target CGPA.</p>
+<div class="card"><form method="post">{% csrf_token %}<input type="hidden" name="page" value="Goals"><div class="form-row"><div class="field"><label>Current CGPA</label><input name="current_cgpa" type="number" min="0" max="10" step=".01" value="7.00" required></div><div class="field"><label>Completed credits</label><input name="completed_credits" type="number" min="0" step=".5" value="0" required></div><div class="field"><label>Future credits to model</label><input name="remaining_credits" type="number" min=".5" step=".5" value="0" required></div><div class="field"><label>Target final CGPA</label><input name="target_cgpa" type="number" min="0" max="10" step=".01" value="8.00" required></div></div><button class="btn">Calculate scenarios &nbsp; →</button></form></div>
+{% if goal %}
+<div class="grid two"><div class="card metric"><div class="metric-label">Required future SGPA</div><div class="metric-value">{{ goal.required }}</div><div class="metric-sub">{% if goal.already %}Current CGPA is already at or above target.{% elif goal.possible %}Required to reach target CGPA {{ goal.target }}.{% else %}This target is above the 10-point SGPA limit under these assumptions.{% endif %}</div></div><div class="card metric"><div class="metric-label">Credits modeled</div><div class="metric-value">{{ goal.remaining }}</div><div class="metric-sub">Future credits are user-entered, not assumed from the workbook.</div></div></div>
+<div class="card"><div class="sec-label">Projected CGPA by future SGPA</div><div id="goal-chart" class="chart"></div><div class="table-wrap"><table><thead><tr><th>Future SGPA</th><th>Projected final CGPA</th></tr></thead><tbody>{% for s in goal.scenarios %}<tr><td>{{ s.future }}</td><td>{{ s.projected }}</td></tr>{% endfor %}</tbody></table></div></div>
+{{ goal.scenarios|json_script:"goal-data" }}<script>(()=>{const rows=JSON.parse(document.getElementById('goal-data').textContent);Plotly.newPlot('goal-chart',[{x:rows.map(r=>Number(r.future)),y:rows.map(r=>Number(r.projected)),type:'scatter',mode:'lines+markers+text',text:rows.map(r=>r.projected),textposition:'top center',line:{color:'#c8a84b',width:3},marker:{size:8}}],{margin:{t:20,r:20,b:45,l:40},paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'DM Sans',color:'#1a1a2e'},xaxis:{title:'Future SGPA',range:[6.8,10.2],gridcolor:'#eeeae2'},yaxis:{title:'Projected CGPA',range:[0,10.5],gridcolor:'#eeeae2'}},{displayModeBar:false,responsive:true})})();</script>
+{% endif %}
+{% endif %}
+</main></div>
+</body></html>
