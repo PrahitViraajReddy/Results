@@ -17,7 +17,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
 from academic_analytics import (
-    GRADE_POINTS, PASS_GRADES, load_academic_data, student_metrics,
+    GRADE_POINTS, PASS_GRADES, load_academic_data, student_metrics, semester_sort_key,
     what_if_cgpa, project_cgpa, rule_based_insights,
 )
 
@@ -214,7 +214,7 @@ def home(request):
                 context["error"] = "No result was found for that hall-ticket number."
             else:
                 summary = student_summary(student, semester_metrics)
-                all_semesters = sorted(df["semester"].astype(str).unique())
+                all_semesters = sorted(df["semester"].astype(str).unique(), key=semester_sort_key)
                 summary["all_semesters"] = all_semesters
                 summary["attempted_semesters"] = set(student["semester"].astype(str))
                 summary.update(extended_academic_views(student))
@@ -223,7 +223,7 @@ def home(request):
                     "name": str(row["subjectName"]), "internal": fmt(row["internal"], 1),
                     "external": fmt(row["external"], 1), "total": fmt(row["total"], 1),
                     "grade": str(row["grade"]), "credits": fmt(row["credits"], 1)
-                } for _, row in student.sort_values("semester").iterrows()]
+                } for _, row in student.assign(_sem_sort=student["semester"].astype(str).map(semester_sort_key)).sort_values("_sem_sort").drop(columns="_sem_sort").iterrows()]
                 context["result"] = summary
                 request.session["last_roll"] = roll
 
@@ -394,6 +394,7 @@ def export_data(request, kind):
         response["Content-Disposition"] = f'attachment; filename="results-{roll}.xlsx"'
         return response
     summary = student_summary(student, semester_metrics)
+    summary["all_semesters"] = sorted(df["semester"].astype(str).unique(), key=semester_sort_key)
     response = HttpResponse(make_pdf(summary, student, semester_metrics), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="results-{roll}.pdf"'
     return response
