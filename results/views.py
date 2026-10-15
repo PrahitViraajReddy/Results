@@ -228,6 +228,7 @@ def home(request):
             context["error"] = "Choose two different students to compare."
         else:
             sa, sb = student_summary(a, semester_metrics), student_summary(b, semester_metrics)
+            xa, xb = extended_academic_views(a), extended_academic_views(b)
             comparison_rows = []
             for label, key in [("CGPA", "cgpa_display"), ("Average marks", "avg_display"),
                                ("Pass percentage", "pass_display"), ("Recorded credits", "credits_display")]:
@@ -241,7 +242,26 @@ def home(request):
                 "gap": fmt(safe_float(row["total_a"]) - safe_float(row["total_b"]), 1),
                 "grade_a": str(row["grade_a"]), "grade_b": str(row["grade_b"])
             } for _, row in merged.iterrows()]
-            context["comparison"] = {"a": sa, "b": sb, "rows": comparison_rows, "subjects": subjects}
+            semester_a = {row["semester"]: row for row in xa["semester_performance"]}
+            semester_b = {row["semester"]: row for row in xb["semester_performance"]}
+            semester_comparison = []
+            for sem in sorted(set(semester_a) | set(semester_b), key=lambda x: tuple(int(p) if p.isdigit() else p for p in x.replace("_", "-").split("-"))):
+                ra, rb = semester_a.get(sem, {}), semester_b.get(sem, {})
+                semester_comparison.append({
+                    "semester": sem, "avg_a": ra.get("average", "—"), "avg_b": rb.get("average", "—"),
+                    "pass_a": ra.get("pass_rate", "—"), "pass_b": rb.get("pass_rate", "—"),
+                    "backlogs_a": ra.get("backlogs", "—"), "backlogs_b": rb.get("backlogs", "—"),
+                })
+            type_comparison = []
+            for ra, rb in zip(xa["theory_lab"], xb["theory_lab"]):
+                type_comparison.append({"type": ra["type"], "internal_a": ra["internal"], "internal_b": rb["internal"],
+                    "external_a": ra["external"], "external_b": rb["external"],
+                    "total_a": ra["total"], "total_b": rb["total"]})
+            grade_comparison = [{"grade": ra["grade"], "count_a": ra["count"], "count_b": rb["count"]}
+                                for ra, rb in zip(xa["grade_counts"], xb["grade_counts"])]
+            context["comparison"] = {"a": sa, "b": sb, "rows": comparison_rows, "subjects": subjects,
+                "semester_rows": semester_comparison, "type_rows": type_comparison, "grade_rows": grade_comparison,
+                "roll_a": roll_a, "roll_b": roll_b}
 
     elif page == "Goals" and request.method == "POST" and not context["error"]:
         current = min(10.0, max(0.0, safe_float(request.POST.get("current_cgpa"))))
