@@ -1,4 +1,4 @@
-from django.test import SimpleTestCase
+from django.test import Client, SimpleTestCase
 from django.urls import reverse
 
 class ResultsRouteTests(SimpleTestCase):
@@ -10,3 +10,8 @@ class ResultsRouteTests(SimpleTestCase):
     def test_unknown_export_type_is_not_found(self):
         response = self.client.get("/export/unknown/?roll=TEST123")
         self.assertEqual(response.status_code, 404)
+
+    def test_post_requires_csrf_token(self):
+        client = Client(enforce_csrf_checks=True)
+        response = client.post(reverse("results:home"), {"page": "Results", "roll_number": "TEST123"})
+        self.assertEqual(response.status_code, 403)
