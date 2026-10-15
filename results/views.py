@@ -240,6 +240,31 @@ def home(request):
                 all_semesters = sorted(df["semester"].astype(str).unique(), key=semester_sort_key)
                 summary["all_semesters"] = all_semesters
                 summary["attempted_semesters"] = set(student["semester"].astype(str))
+                semester_overview = []
+                for sem in all_semesters:
+                    sem_rows = student[student["semester"].astype(str) == str(sem)]
+                    if sem_rows.empty:
+                        semester_overview.append({"semester": str(sem), "status": "Not Applied for Exams",
+                            "sgpa": "—", "credits": "—", "backlogs": "—"})
+                        continue
+                    sem_roll = str(roll).strip().upper()
+                    sgpa = semester_metrics.get((sem_roll, str(sem), "sgpa"))
+                    sem_credits = semester_metrics.get((sem_roll, str(sem), "sem credits"))
+                    if sem_credits is None or pd.isna(sem_credits):
+                        sem_credits = pd.to_numeric(sem_rows["credits"], errors="coerce").fillna(0).sum()
+                    passed = sem_rows["grade"].astype(str).str.strip().str.upper().isin(PASS_GRADES).all()
+                    if sgpa is None or pd.isna(sgpa):
+                        if passed and sem_credits > 0:
+                            points = sem_rows["grade"].astype(str).str.strip().str.upper().map(GRADE_POINTS)
+                            credits = pd.to_numeric(sem_rows["credits"], errors="coerce").fillna(0)
+                            sgpa = (points * credits).sum() / sem_credits
+                        else:
+                            sgpa = None
+                    semester_overview.append({"semester": str(sem),
+                        "status": "Passed" if passed else "Backlog(s) present",
+                        "sgpa": fmt(sgpa), "credits": fmt(sem_credits, 0),
+                        "backlogs": int((~sem_rows["grade"].astype(str).str.strip().str.upper().isin(PASS_GRADES)).sum())})
+                summary["semester_overview"] = semester_overview
                 summary.update(extended_academic_views(student))
                 summary["subjects"] = [{
                     "semester": str(row["semester"]), "code": str(row["subjectCode"]),
