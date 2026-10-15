@@ -1,3 +1,4 @@
+import html
 import io
 import os
 import time
@@ -43,8 +44,28 @@ def fmt(value, digits=2):
 
 def student_summary(frame, metrics):
     result = student_metrics(frame, metrics)
+    # Keep the original rule: F/AB locks CGPA; otherwise use workbook SGPA ×
+    # semester credits when complete, then the grade-point fallback.
     if result["backlogs"] > 0:
         result["cgpa"] = None
+    else:
+        semesters = frame["semester"].astype(str).unique().tolist()
+        roll = str(frame["rollNumber"].iloc[0]).strip().upper()
+        semester_rows = []
+        for sem in semesters:
+            sgpa = metrics.get((roll, str(sem), "sgpa"))
+            credits = metrics.get((roll, str(sem), "sem credits"))
+            if sgpa is not None and pd.notna(sgpa) and credits is not None and pd.notna(credits):
+                semester_rows.append((float(sgpa), float(credits)))
+        if semester_rows and len(semester_rows) == len(semesters) and all(cr > 0 for _, cr in semester_rows):
+            total_credits = sum(cr for _, cr in semester_rows)
+            result["cgpa"] = sum(sgpa * cr for sgpa, cr in semester_rows) / total_credits if total_credits else None
+        else:
+            grade_points = frame["grade"].astype(str).str.strip().str.upper().map(GRADE_POINTS)
+            credits = pd.to_numeric(frame["credits"], errors="coerce").fillna(0)
+            result["cgpa"] = ((grade_points * credits).sum() / credits.sum()
+                              if credits.sum() > 0 and not frame["grade"].isin(["F", "AB"]).any()
+                              else None)
     result["cgpa_display"] = fmt(result["cgpa"])
     result["avg_display"] = fmt(result["avg_marks"], 1)
     result["credits_display"] = fmt(result["credits"], 0)
@@ -123,12 +144,18 @@ def make_pdf(summary, rows, metrics):
         Paragraph(f"<b>Overall CGPA:</b> {summary['cgpa_display']}", normal),
         Spacer(1, 10),
     ]
-    for semester in sorted(rows["semester"].astype(str).unique(), key=lambda s: [int(x) if x.isdigit() else x for x in s.replace("_","-").split("-")]):
-        story.append(Paragraph(f"Semester {semester}", styles["Heading2"]))
+    attempted = set(rows["semester"].astype(str).unique())
+    all_semesters = summary.get("all_semesters", sorted(attempted))
+    for semester in sorted([str(s) for s in all_semesters], key=lambda s: tuple(int(x) if x.isdigit() else x for x in s.replace("_","-").split("-"))):
+        story.append(Paragraph(f"Semester {html.escape(semester)}", styles["Heading2"]))
+        if semester not in attempted:
+            story.append(Paragraph("Not Applied for Exams", normal))
+            story.append(Spacer(1, 6))
+            continue
         sem = rows[rows["semester"].astype(str) == semester]
         table_data = [["Code", "Subject", "Internal", "External", "Total", "Grade", "Credits"]]
         for _, item in sem.iterrows():
-            table_data.append([str(item["subjectCode"]), str(item["subjectName"]),
+            table_data.append([str(item["subjectCode"]), html.escape(str(item["subjectName"])),
                 fmt(item["internal"], 1), fmt(item["external"], 1), fmt(item["total"], 1),
                 str(item["grade"]), fmt(item["credits"], 1)])
         table = Table(table_data, colWidths=[20*mm, 63*mm, 16*mm, 16*mm, 16*mm, 16*mm, 15*mm], repeatRows=1)
