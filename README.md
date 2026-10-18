@@ -8,6 +8,18 @@ It converts semester-wise Excel result data into a structured workflow for **res
 
 [Open the deployed Results App](https://academic-results.streamlit.app/)
 
+## 🖼️ Screenshots
+
+The screenshots below show the main workflows in the deployed app.
+
+| Screen | Preview |
+|---|---|
+| Home dashboard | ![Results App home dashboard](images/home.png) |
+| Semester results | ![Semester results and grades](images/results.png) |
+| Academic insights | ![Academic analytics and insights](images/insights.png) |
+| Student comparison | ![Student academic comparison](images/comparison.png) |
+| PDF report export | ![PDF report export](images/export_pdf.png) |
+
 ## 🎯 Project Focus
 
 This is a **student platform**, not a college/admin analytics dashboard.
@@ -145,6 +157,7 @@ Results/
 ├── academic_analytics.py
 ├── results.xlsx
 ├── requirements.txt
+├── images/                 # Application screenshots
 └── README.md
 ```
 
