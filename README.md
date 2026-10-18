@@ -1,16 +1,51 @@
+<div align="center">
+
 # 🎓 Results App
 
-**Results App** is a student-focused academic performance platform built with **Python, Pandas, OpenPyXL, Streamlit, Plotly, and ReportLab**.
+**A student-focused academic analytics platform for exploring semester results, understanding performance, comparing students, and planning future CGPA goals.**
 
-It converts semester-wise Excel result data into a structured workflow for **result lookup, personal academic analytics, student-to-student comparison, what-if CGPA planning, visualization, and reporting**.
+<p>
+  <a href="https://academic-results.streamlit.app/"><img alt="Live App" src="https://img.shields.io/badge/Live%20App-Visit-2ea44f?style=flat-square"></a>
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img alt="Streamlit" src="https://img.shields.io/badge/UI-Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white">
+  <img alt="Pandas" src="https://img.shields.io/badge/Data-Pandas-150458?style=flat-square&logo=pandas&logoColor=white">
+  <img alt="Charts" src="https://img.shields.io/badge/Charts-Plotly-3F4F75?style=flat-square">
+</p>
 
-## 🌐 Live Demo
+[**Open the live app**](https://academic-results.streamlit.app/) · [**View source code**](https://github.com/PrahitViraajReddy/Results)
 
-[Open the deployed Results App](https://academic-results.streamlit.app/)
+</div>
 
-## 🖼️ Screenshots
+---
 
-The screenshots below show the main workflows in the deployed app.
+## What is Results App?
+
+Results App is a student-focused academic performance platform built with **Python, Streamlit, Pandas, OpenPyXL, Plotly, and ReportLab**. It turns semester-wise Excel result data into a practical workflow for looking up results, understanding academic trends, comparing students, testing future SGPA scenarios, and exporting reports.
+
+The app is designed around individual student questions:
+
+- **Results** — What did I score in each subject and semester?
+- **My Analytics** — Where am I performing well, and which areas need attention?
+- **Comparison** — How do two students differ across comparable academic measures?
+- **Goals** — What future SGPA could help me reach a target CGPA?
+
+Academic metrics are calculated from the available workbook records. Missing semesters are not automatically treated as zero.
+
+## Features
+
+- **Result lookup** — Search by hall-ticket number and view semester-wise subjects, marks, grades, credits, SGPA/CGPA, and available result summaries.
+- **Personal academic analytics** — Explore average marks, pass percentage, credit totals, grade/backlog summaries, semester trends, subject strengths, and subjects that may need attention.
+- **Semester movement** — Review changes between consecutive recorded semesters without treating gaps in the record as actual performance drops.
+- **Student comparison** — Compare CGPA, marks, pass percentage, credits, semester performance, common subjects, and grade/backlog records.
+- **CGPA goal planning** — Test future SGPA scenarios, project a possible final CGPA, and calculate the average future SGPA required for a target.
+- **What-if analysis** — Explore different future credits and SGPA assumptions, including targets that are not achievable on a 10-point SGPA scale.
+- **Exports and reports** — Export supported analytics/comparison data and generate PDF result reports.
+
+Feature availability and calculated metrics depend on the data present in the workbook.
+
+## Screenshots
+
+The screenshots below illustrate the main application workflows.
 
 | Screen | Preview |
 |---|---|
@@ -20,160 +55,148 @@ The screenshots below show the main workflows in the deployed app.
 | Student comparison | ![Student academic comparison](images/screenshot-student-comparison.png) |
 | PDF report export | ![PDF report export](images/screenshot-pdf-export.png) |
 
-## 🎯 Project Focus
+## How it works
 
-This is a **student platform**, not a college/admin analytics dashboard.
+```text
+Student
+  │
+  ▼
+Streamlit interface
+  │
+  ▼
+Result lookup and analytics logic
+  │
+  ├──► Results and semester summaries
+  ├──► Academic trends and comparisons
+  ├──► CGPA goal / what-if calculations
+  └──► Exports and PDF reports
+  │
+  ▼
+Excel workbook (results.xlsx)
+```
 
-The application is designed around a simple distinction:
-- **Results** → What did I score?
-- **My Analytics** → How am I performing, where am I improving/declining, and what should I investigate?
-- **Comparison** → How do two students differ across comparable academic metrics?
-- **Goals** → What future SGPA would be needed to reach a target CGPA?
+The Streamlit interface presents result and analytics workflows. Pandas processes the workbook data, OpenPyXL supports Excel handling, Plotly provides interactive visualizations, and ReportLab supports PDF report generation. Academic analytics helpers are separated into `academic_analytics.py`.
 
-All academic calculations are deterministic and derived from the supplied workbook.
+## Technology stack
 
-## ✨ Features
-
-### 📋 Results
-- Hall-ticket based result lookup
-- Semester-wise subject results
-- Internal, external and total marks
-- Grade and credit information
-- SGPA/CGPA display
-- Academic performance summary
-- PDF result/report export
-
-### 📊 My Analytics
-- CGPA
-- Average marks
-- Grade-point average
-- Pass percentage
-- Recorded and passed credits
-- SGPA volatility and range
-- Best and weakest semester
-- Semester-to-semester movement
-- Strongest subjects
-- Subjects needing attention
-- Semester performance breakdown
-- Subject-level marks analysis
-- Theory vs Lab internal/external averages
-- Grade and backlog summary
-- What-if CGPA scenarios
-- Target CGPA planning
-- Internal vs external performance analysis
-
-**Important:** missing semesters are not treated as zero. Semester movement is calculated only when the recorded semesters are actually consecutive.
-
-### ⚖️ Comparison
-- CGPA
-- Average marks
-- Pass percentage
-- Recorded credits
-- F/AB backlog records
-- Semester SGPA
-- Semester movement
-- Semester performance
-- Theory vs Lab performance
-- Common-subject marks and grades
-- Subject-wise marks gaps
-- Grade/backlog comparison
-
-If a student has no recorded result for a semester, that missing semester is preserved as missing rather than being converted into a zero.
-
-### 🎯 Goal & What-if Analysis
-- Enter future credits to model
-- Test future SGPA scenarios
-- Project final CGPA
-- Set a target CGPA
-- Calculate the required average future SGPA
-- Identify targets that are mathematically unreachable under a 10-point SGPA scale
-
-The application does **not** assume a remaining-credit total when the workbook does not provide one.
-
-### 📤 Export
-- CSV analytics export
-- Excel analytics/comparison exports
-- Existing result-report/PDF workflow
-
-## 🧮 Academic Analytics Logic
-
-### SGPA
-**SGPA = Σ(Grade Point × Credits) / Σ(Credits)**
-
-### CGPA
-**CGPA = Σ(Semester SGPA × Semester Credits) / Σ(Total Semester Credits)**
-
-Workbook-provided semester SGPA and credit values are preferred where available.
-
-### Grade Handling
-The application uses recorded grade information and distinguishes passing grades from **F/AB** records for backlog analysis.
-
-### Missing Semester Handling
-A missing result is **not** interpreted as a zero.
-
-For semester movement:
-- `1-1 → 1-2` is consecutive
-- `1-2 → 2-1` is consecutive
-- `3-1 → 4-1` is **not** consecutive if `3-2` is missing
-
-This prevents misleading improvement/drop calculations.
-
-## 🗂️ Application Structure
-
-The main application remains in `ui.py`.
-
-Supporting academic analytics logic is kept in:
-- `academic_analytics.py`
-- `results.xlsx`
-- `requirements.txt`
-
-The application uses the existing Streamlit UI rather than separate analytics pages, keeping the original Results experience intact while extending it with student-focused analytics and comparison workflows.
-
-## 🛠️ Tech Stack
-
-| Technology | Purpose |
+| Layer | Technology |
 |---|---|
-| **Python** | Application logic and academic calculations |
-| **Pandas** | Data processing and transformation |
-| **OpenPyXL** | Excel workbook handling |
-| **Streamlit** | Interactive web application |
-| **Plotly** | Interactive visualizations |
-| **ReportLab** | PDF report generation |
+| Language | Python 3.14 |
+| Web interface | Streamlit |
+| Data processing | Pandas |
+| Excel handling | OpenPyXL |
+| Interactive charts | Plotly |
+| PDF reports | ReportLab |
+| Data source | Excel workbook (`results.xlsx`) |
+| Deployment | Streamlit Community Cloud |
 
-## 🚀 Run Locally
+## Academic calculations and data handling
+
+### SGPA and CGPA
+
+The app uses semester SGPA and credit information available in the workbook to support weighted academic calculations.
+
+**Weighted CGPA = Σ(Semester SGPA × Semester Credits) / Σ(Semester Credits)**
+
+### Grades and backlogs
+
+Recorded grade values are used to distinguish passing grades from F/AB records for backlog-related analysis.
+
+### Missing semesters
+
+A missing semester is treated as missing data, not a score of zero. Semester-to-semester movement is calculated only when the recorded semesters are consecutive. For example, a comparison from 3-1 to 4-1 is not treated as a consecutive-semester change if 3-2 is absent.
+
+### Goal planning
+
+Future CGPA scenarios use the credits and SGPA assumptions supplied to the calculator. The app does not invent a remaining-credit total when the workbook does not provide one.
+
+## Quick start
+
+**Python version:** Use Python **3.14** for this project.
+
+Check your installed version:
+
+```bash
+python --version
+```
+
+The output should begin with `Python 3.14`.
+
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/PrahitViraajReddy/Results.git
 cd Results
+```
+
+### 2. Create a virtual environment
+
+```bash
+python -m venv .venv
+```
+
+Activate it:
+
+**Windows**
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+**macOS / Linux**
+```bash
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
+python -m pip install --upgrade pip
 pip install -r requirements.txt
+```
+
+### 4. Run the application
+
+```bash
 streamlit run ui.py
 ```
 
-## 📁 Project Structure
+Streamlit will print a local URL in the terminal. Open that URL in your browser.
+
+## Repository structure
 
 ```text
 Results/
-├── ui.py
-├── academic_analytics.py
-├── results.xlsx
-├── requirements.txt
-├── images/                 # Application screenshots
-└── README.md
+├── .devcontainer/                  # Development container configuration
+├── academic_analytics.py            # Academic metrics and analysis helpers
+├── images/                          # Application screenshots
+├── results.xlsx                     # Semester-wise source workbook
+├── requirements.txt                 # Python dependencies
+├── ui.py                            # Main Streamlit application
+└── README.md                        # Project documentation
 ```
 
-## 🔐 Data Privacy
+## Data privacy and responsible use
 
-The application processes student-level academic records.
+Academic records can contain personal information. Use only data you are authorized to access, and avoid publishing real student records or hall-ticket details in public screenshots, repositories, or deployments. Before using the application with real student data, review the workbook contents and the access/privacy controls of the deployment.
 
-If deploying publicly, use synthetic, anonymized, or appropriately authorized academic data. Do not publish real student records without authorization.
+## Engineering highlights
 
-## 👤 Author
+- Student-focused workflows across results, analytics, comparison, and CGPA planning
+- Data processing for semester-wise academic records stored in Excel
+- Academic metrics with explicit handling for missing semesters
+- Comparison logic for common subjects and recorded semester performance
+- Interactive visualizations and exportable reports
+- Separation of analytics helpers from the main Streamlit interface
 
-**Prahit Viraaj Reddy**
+## Links
 
-- GitHub: [@PrahitViraajReddy](https://github.com/PrahitViraajReddy)
-- Live App: [academic-results.streamlit.app](https://academic-results.streamlit.app/)
+- **Live application:** https://academic-results.streamlit.app/
+- **GitHub repository:** https://github.com/PrahitViraajReddy/Results
 
-## ⚠️ Disclaimer
+---
 
-This is an educational and portfolio project. Analytics depend on the quality, completeness, and structure of the supplied academic workbook.
+<div align="center">
+
+Built with Python, Streamlit, and Pandas.
+
+</div>
