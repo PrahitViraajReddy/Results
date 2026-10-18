@@ -51,7 +51,6 @@ The screenshots below illustrate the main application workflows.
 |---|---|
 | Home dashboard | ![Results App home dashboard](images/screenshot-home.png) |
 | Semester results | ![Semester results and grades](images/screenshot-results.png) |
-| Academic insights | ![Academic analytics and insights](images/screenshot-academic-insights.png) |
 | Student comparison | ![Student academic comparison](images/screenshot-student-comparison.png) |
 | PDF report export | ![PDF report export](images/screenshot-pdf-export.png) |
 | Additional application view 1 | ![Additional application view 1](images/1792293210982.jpg) |
