@@ -14,11 +14,11 @@ The screenshots below show the main workflows in the deployed app.
 
 | Screen | Preview |
 |---|---|
-| Home dashboard | ![Results App home dashboard](images/home.png) |
-| Semester results | ![Semester results and grades](images/results.png) |
-| Academic insights | ![Academic analytics and insights](images/insights.png) |
-| Student comparison | ![Student academic comparison](images/comparison.png) |
-| PDF report export | ![PDF report export](images/export_pdf.png) |
+| Home dashboard | ![Results App home dashboard](images/screenshot-home.png) |
+| Semester results | ![Semester results and grades](images/screenshot-results.png) |
+| Academic insights | ![Academic analytics and insights](images/screenshot-academic-insights.png) |
+| Student comparison | ![Student academic comparison](images/screenshot-student-comparison.png) |
+| PDF report export | ![PDF report export](images/screenshot-pdf-export.png) |
 
 ## 🎯 Project Focus
 
