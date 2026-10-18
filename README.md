@@ -54,6 +54,13 @@ The screenshots below illustrate the main application workflows.
 | Academic insights | ![Academic analytics and insights](images/screenshot-academic-insights.png) |
 | Student comparison | ![Student academic comparison](images/screenshot-student-comparison.png) |
 | PDF report export | ![PDF report export](images/screenshot-pdf-export.png) |
+| Additional application view 1 | ![Additional application view 1](images/1792293210982.jpg) |
+| Additional application view 2 | ![Additional application view 2](images/1792293233463.jpg) |
+| Additional application view 3 | ![Additional application view 3](images/1792293271485.jpg) |
+| Additional application view 4 | ![Additional application view 4](images/1792293302059.jpg) |
+| Additional application view 5 | ![Additional application view 5](images/1792293316311.jpg) |
+| Additional application view 6 | ![Additional application view 6](images/1792293339148.jpg) |
+| Additional application view 7 | ![Additional application view 7](images/1792293362129.jpg) |
 
 ## How it works
 
