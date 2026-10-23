@@ -183,6 +183,8 @@ Results/
 
 ## Data privacy and responsible use
 
+**Purpose:** This project is intended for educational and personal purposes only, and not for any other purposes.
+
 Academic records can contain personal information. Use only data you are authorized to access, and avoid publishing real student records or hall-ticket details in public screenshots, repositories, or deployments. Before using the application with real student data, review the workbook contents and the access/privacy controls of the deployment.
 
 ## Engineering highlights
